@@ -2,7 +2,7 @@
 
 输入文案，生成带渐变、描边和错位攀登效果的中文贴纸，也能制作飞书群头像。
 
-**[在线使用](https://zhousiru.github.io/scale-new-heights-generator)** · [更新日志](CHANGELOG.md) · [技术实现与 Node API](https://github.com/zhousiru/scale-new-heights-generator/blob/main/docs/technical-implementation.md)
+**[在线使用](https://zhousiru.github.io/scale-new-heights-generator)** · [更新日志](CHANGELOG.md) · [技术实现与 Node API](https://github.com/zhousiru/scale-new-heights-generator/blob/41d09a041c03f777b77c9d2630287b5ff603d89d/docs/technical-implementation.md)
 
 ## 能做什么
 
@@ -27,7 +27,11 @@ pnpm dev
 
 ## 在 Node 中使用
 
-npm 包名为 `@syru/byted-sticker-generator`。**1.0.0 正式版尚未发布**，发布进度见 [PR #8](https://github.com/zhousiru/scale-new-heights-generator/pull/8)。
+npm 包名为 `@syru/byted-sticker-generator`，需要 Node 24+。
+
+```bash
+npm install @syru/byted-sticker-generator@^1.0.0
+```
 
 ```ts
 import { renderStickerToBuffer } from '@syru/byted-sticker-generator/node'
@@ -41,7 +45,7 @@ const png = await renderStickerToBuffer({
 // png 是 Buffer，可直接交给文件保存或机器人图片上传逻辑。
 ```
 
-头像使用 `@syru/byted-sticker-generator/avatar/node`。更多 API、离线使用和自定义 Canvas runtime 见 [技术实现文档](https://github.com/zhousiru/scale-new-heights-generator/blob/main/docs/technical-implementation.md)。
+头像使用 `@syru/byted-sticker-generator/avatar/node`。更多 API、离线使用和自定义 Canvas runtime 见 [技术实现文档](https://github.com/zhousiru/scale-new-heights-generator/blob/41d09a041c03f777b77c9d2630287b5ff603d89d/docs/technical-implementation.md)。
 
 ## 说明
 

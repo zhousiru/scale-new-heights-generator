@@ -6,6 +6,14 @@
     "node": ">=24.0.0"
   },
   "description": "中文勇攀高峰表情包与飞书头像生成器，支持浏览器 UI 与 Node 无头 PNG 渲染。",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhousiru/scale-new-heights-generator.git"
+  },
+  "homepage": "https://zhousiru.github.io/scale-new-heights-generator",
+  "bugs": {
+    "url": "https://github.com/zhousiru/scale-new-heights-generator/issues"
+  },
   "main": "./lib/sticker/index.mjs",
   "module": "./lib/sticker/index.mjs",
   "types": "./lib/sticker/index.d.mts",
