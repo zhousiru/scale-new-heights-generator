@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto'
 import { renderStickerToBuffer } from '../lib/sticker/node.mjs'
 import { renderAvatarToBuffer } from '../lib/sticker/avatar/node.mjs'
 
-// Includes PNG encoding; excludes network icons and warms fonts/JIT before timing.
+// 包含 PNG 编码，不含图标下载；先预热字体和 JIT，再测量生成耗时。
+const WARMUP_RUNS = 3
+const MEASURED_RUNS = 9
 const paragraph = '勇攀高峰一起创造更多可能持续学习保持热爱'
 const cases = [
   ['sticker-long-lines', () => renderStickerToBuffer(Array(15).fill(paragraph).join('\n'), { loadIcon: false })],
@@ -16,15 +18,15 @@ const cases = [
 ]
 const results = []
 for (const [name, render] of cases.filter(([name]) => !process.env.BENCH_FILTER || name.includes(process.env.BENCH_FILTER))) {
-  for (let i = 0; i < 3; i++) await render()
+  for (let i = 0; i < WARMUP_RUNS; i++) await render()
   const times = []
   let output
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < MEASURED_RUNS; i++) {
     const start = performance.now()
     output = await render()
     times.push(performance.now() - start)
   }
   times.sort((a, b) => a - b)
-  results.push({ name, medianMs: +times[4].toFixed(2), sha256: createHash('sha256').update(output).digest('hex') })
+  results.push({ name, medianMs: +times[Math.floor(times.length / 2)].toFixed(2), sha256: createHash('sha256').update(output).digest('hex') })
 }
 console.log(JSON.stringify(results, null, 2))

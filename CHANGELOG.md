@@ -5,7 +5,7 @@
 - 调整预设配色、描边、文字阴影和图标倾斜，字节范与务实浪漫系列更接近参考效果。
 - 优化大图生成：同一测试环境下，300 字多行文案从 2.45 秒降至 0.20 秒；连续编辑和重复导出减少等待。
 - 网页字体按需加载，在线来源失效时回退本地；预设菜单使用对应字体，字号与渐变显示更完整。
-- Node 最低版本调整为 24。渲染策略和性能测试条件见 [技术实现文档](https://github.com/zhousiru/scale-new-heights-generator/blob/41d09a041c03f777b77c9d2630287b5ff603d89d/docs/technical-implementation.md)。
+- Node 最低版本调整为 24。渲染策略和性能测试条件见 [技术实现文档](https://github.com/zhousiru/scale-new-heights-generator/blob/main/docs/technical-implementation.md)。
 
 ## 1.0.0-beta.2 — 2026-07-27
 

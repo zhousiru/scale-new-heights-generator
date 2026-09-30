@@ -24,7 +24,7 @@ function collectModules() {
   }
 }
 
-// Build in memory: this includes worker chunks but leaves dist untouched.
+// 在内存中构建，统计包含 Worker 的产物，不写入 dist。
 const result = await build({
   root,
   logLevel: 'silent',
@@ -50,8 +50,7 @@ const publicFiles = await Promise.all((await readdir(new URL('../public/', impor
 console.log(JSON.stringify({
   assets,
   publicFiles,
-  // Rendered module lengths are before final chunk minification. Use these
-  // only to locate contributors, not as additive download-size estimates.
+  // 模块长度来自最终压缩之前，只用于定位体积来源，不能相加当作下载体积。
   dependenciesBeforeMinification: [...dependencies].map(([name, files]) => ({
     name, bytes: [...files.values()].reduce((sum, bytes) => sum + bytes, 0),
   })).sort((a, b) => b.bytes - a.bytes),

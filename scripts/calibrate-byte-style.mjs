@@ -1,8 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { convertRgbToOklab, parseHex } from 'culori/fn'
 
-// Chosen by leave-one-preset-out validation over the measured palettes.
-// Penalize color/neighbor weights, keeping the intercept unpenalized.
+// 正则化强度在参考色板拟合时选定；抑制颜色和邻色项过拟合，不惩罚截距。
 const RIDGE_PENALTY = 0.02
 const COEFFICIENT_DECIMALS = 6
 const FEATURE_COUNT = 7
@@ -21,8 +20,7 @@ const samples = Object.values(reference).flatMap(({ foreground, outline }) => {
   }))
 })
 
-// Solve the small normal equation with partial pivoting. This is a build-time
-// fit, never shipped to the renderer, and needs no numerical-library dependency.
+// 用部分选主元消元求解小型正规方程。只用于离线校准，不进入渲染产物。
 function solve(matrix, values) {
   const augmented = matrix.map((row, index) => [...row, values[index]])
   for (let column = 0; column < FEATURE_COUNT; column++) {
@@ -32,7 +30,7 @@ function solve(matrix, values) {
     }
     ;[augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]]
     const divisor = augmented[column][column]
-    if (!divisor) throw new Error('Singular calibration matrix')
+    if (!divisor) throw new Error('校准矩阵不可逆')
     for (let entry = column; entry <= FEATURE_COUNT; entry++) augmented[column][entry] /= divisor
     for (let row = 0; row < FEATURE_COUNT; row++) {
       if (row === column) continue
@@ -54,24 +52,24 @@ for (const { features, split } of samples) {
 for (let feature = 1; feature < FEATURE_COUNT; feature++) matrix[feature][feature] += RIDGE_PENALTY
 const coefficients = values.map(axis => solve(matrix, axis))
 const rows = coefficients.map(row => `    [${row.map(value => Number(value.toFixed(COEFFICIENT_DECIMALS))).join(', ')}],`).join('\n')
-const output = `// Generated coefficients: node scripts/calibrate-byte-style.mjs
-// Measurements: scripts/fixtures/byte-style-palettes.json (RGB colors only).
-// Rows predict [ΔL, Δa, Δb]; columns are
-// [intercept, L, a, b, neighbor.ΔL, neighbor.Δa, neighbor.Δb].
+const output = `// 由 node scripts/calibrate-byte-style.mjs 生成。
+// 测量数据：scripts/fixtures/byte-style-palettes.json，仅保存 RGB 色值。
+// 各行预测 [ΔL, Δa, Δb]；各列依次对应
+// [截距, L, a, b, 邻色ΔL, 邻色Δa, 邻色Δb]。
 export const BYTE_STYLE_CALIBRATION = {
   split: [
 ${rows}
   ],
-  // Keep a readable text/outline gap even outside the measured palettes.
+  // 输入不在参考色板内时，也为字面与描边保留可辨认的明度差。
   minLightnessSplit: 0.10,
   maxLightnessSplit: 0.24,
-  // Fade chromatic adjustments to zero as input approaches neutral gray.
+  // 输入接近中性灰时，将色度调整逐渐减到零。
   neutralChroma: 0.03,
 } as const
 `
 if (process.argv.includes('--check')) {
-  if (await readFile(target, 'utf8') !== output) throw new Error('Calibration differs; run node scripts/calibrate-byte-style.mjs')
+  if (await readFile(target, 'utf8') !== output) throw new Error('校准结果与配置不一致，请运行 node scripts/calibrate-byte-style.mjs')
 } else {
   await writeFile(target, output)
 }
-console.log(`Calibrated ${samples.length} stops; ridge=${RIDGE_PENALTY}, ${COEFFICIENT_DECIMALS} decimal coefficients`)
+console.log(`已校准 ${samples.length} 个颜色停靠点；正则化强度 ${RIDGE_PENALTY}，系数保留 ${COEFFICIENT_DECIMALS} 位小数`)
