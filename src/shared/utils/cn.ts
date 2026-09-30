@@ -1,5 +1,5 @@
-import { cn as cnfast, type ClassValue } from 'cnfast'
+import { clsx, type ClassValue } from 'clsx'
 
 export function cn(...inputs: ClassValue[]): string {
-  return cnfast(...inputs)
+  return clsx(...inputs)
 }

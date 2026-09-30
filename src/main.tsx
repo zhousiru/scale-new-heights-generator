@@ -7,6 +7,9 @@ import './styles/ui.css'
 import './styles/controls.css'
 import './styles/preview.css'
 import { router } from './router/router'
+import { loadInterFontSources } from './sticker/worker/fontStylesheet'
+
+void loadInterFontSources()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

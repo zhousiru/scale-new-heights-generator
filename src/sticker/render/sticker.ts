@@ -76,7 +76,7 @@ export async function renderSticker(
   // 多色 / duotone 图标顶层原生叠加；单色图标折进蒙版由文字配色统一重着色。
   const iconColored = icon?.colored ?? false
 
-  await ensureStickerFontLoaded(controls.flavor)
+  await ensureStickerFontLoaded(controls.flavor, text)
 
   const antialiasScale = options.antialiasScale ?? controls.antialiasScale
   let renderControls = scaleControlsForRasterization(controls, antialiasScale)

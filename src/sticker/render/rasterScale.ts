@@ -1,5 +1,10 @@
 import type { Bounds, StickerLayout } from './types'
 
+const COMPACT_RENDER_MAX_PIXELS = 4_000_000
+const RASTER_MAX_EDGE = 16_380
+const RASTER_MAX_PIXELS = 16_000_000
+const SAMPLES_PER_OUTPUT_PIXEL = 2
+
 /** Avoid rasterizing long text at hundreds of times its final pixel count.
  * Target two samples per output pixel, multiplied by the selected AA.
  * Bound large intermediates to 16 megapixels / 16380 pixels per edge.
@@ -23,14 +28,14 @@ export function outputAwareRasterScale(
   const workingHeight = height + workingPadding * 2
   // Keep compact renders unchanged: lowering their resolution saves little
   // while font hinting and stroke rounding can shift the exported crop.
-  if (workingWidth * workingHeight <= 4_000_000 && Math.max(workingWidth, workingHeight) <= 16380) {
+  if (workingWidth * workingHeight <= COMPACT_RENDER_MAX_PIXELS && Math.max(workingWidth, workingHeight) <= RASTER_MAX_EDGE) {
     return 1
   }
   return Math.min(
     1,
-    outputRatio * Math.max(1, antialiasScale) * 2,
-    16380 / Math.max(workingWidth, workingHeight),
-    Math.sqrt(16_000_000 / (workingWidth * workingHeight)),
+    outputRatio * Math.max(1, antialiasScale) * SAMPLES_PER_OUTPUT_PIXEL,
+    RASTER_MAX_EDGE / Math.max(workingWidth, workingHeight),
+    Math.sqrt(RASTER_MAX_PIXELS / (workingWidth * workingHeight)),
   )
 }
 

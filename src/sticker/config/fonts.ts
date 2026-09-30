@@ -1,6 +1,6 @@
 /** 拉丁字符专用字体族名 */
 export const LATIN_FONT_FAMILY = 'Inter Latin Bold'
-/** 拉丁字符字体包内路径 */
+/** Node 本地拉丁字体来源；网页优先使用 Inter 官方 CSS */
 export const LATIN_FONT_PACKAGE_PATH = 'inter-ui/web-latin/Inter-Bold-subset.woff2'
 /** 拉丁字符字体特性设置 */
 export const LATIN_FONT_FEATURE_SETTINGS = '"ss01" 1, "ss04" 1'

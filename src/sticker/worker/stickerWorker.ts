@@ -2,6 +2,7 @@ import type { StickerControls } from '../config/defaults'
 import type { WorkerResponse } from '../config/workerProtocol'
 import { loadIconBitmap } from '../utils/iconLoader'
 import { createImageWorkerClient } from '../../shared/worker/imageWorker'
+import { loadInterFontSources, loadStickerFontSources } from './fontStylesheet'
 import type {
   ImageFileResult,
   PreviewResult,
@@ -23,13 +24,17 @@ const client = createImageWorkerClient<WorkerResponse>(() =>
 
 export function renderStickerPreview(controls: StickerControls): Promise<PreviewResult> {
   return client.request<PreviewResult>(async (worker, id, signal) => {
-    const icon = await loadIconBitmap(controls.icon, iconPrimaryColor(controls))
+    const [icon, fonts, interFonts] = await Promise.all([
+      loadIconBitmap(controls.icon, iconPrimaryColor(controls)),
+      loadStickerFontSources(controls.flavor),
+      loadInterFontSources(),
+    ])
     if (signal.aborted) {
       icon?.bitmap.close()
       return
     }
     worker.postMessage(
-      { type: 'render', id, controls, icon },
+      { type: 'render', id, controls, icon, fonts, interFont: interFonts?.[0] },
       { transfer: icon ? [icon.bitmap] : [] },
     )
   })
@@ -37,13 +42,17 @@ export function renderStickerPreview(controls: StickerControls): Promise<Preview
 
 export function exportStickerBlob(controls: StickerControls): Promise<ImageFileResult> {
   return client.request<ImageFileResult>(async (worker, id, signal) => {
-    const icon = await loadIconBitmap(controls.icon, iconPrimaryColor(controls))
+    const [icon, fonts, interFonts] = await Promise.all([
+      loadIconBitmap(controls.icon, iconPrimaryColor(controls)),
+      loadStickerFontSources(controls.flavor),
+      loadInterFontSources(),
+    ])
     if (signal.aborted) {
       icon?.bitmap.close()
       return
     }
     worker.postMessage(
-      { type: 'export', id, controls, icon },
+      { type: 'export', id, controls, icon, fonts, interFont: interFonts?.[0] },
       { transfer: icon ? [icon.bitmap] : [] },
     )
   }, 'export')
