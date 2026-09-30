@@ -22,8 +22,12 @@ const client = createImageWorkerClient<WorkerResponse>(() =>
 )
 
 export function renderStickerPreview(controls: StickerControls): Promise<PreviewResult> {
-  return client.request<PreviewResult>(async (worker, id) => {
+  return client.request<PreviewResult>(async (worker, id, signal) => {
     const icon = await loadIconBitmap(controls.icon, iconPrimaryColor(controls))
+    if (signal.aborted) {
+      icon?.bitmap.close()
+      return
+    }
     worker.postMessage(
       { type: 'render', id, controls, icon },
       { transfer: icon ? [icon.bitmap] : [] },
@@ -32,13 +36,17 @@ export function renderStickerPreview(controls: StickerControls): Promise<Preview
 }
 
 export function exportStickerBlob(controls: StickerControls): Promise<ImageFileResult> {
-  return client.request<ImageFileResult>(async (worker, id) => {
+  return client.request<ImageFileResult>(async (worker, id, signal) => {
     const icon = await loadIconBitmap(controls.icon, iconPrimaryColor(controls))
+    if (signal.aborted) {
+      icon?.bitmap.close()
+      return
+    }
     worker.postMessage(
       { type: 'export', id, controls, icon },
       { transfer: icon ? [icon.bitmap] : [] },
     )
-  })
+  }, 'export')
 }
 
 export function cancelPendingPreviews(): void {

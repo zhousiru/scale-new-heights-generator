@@ -194,9 +194,9 @@ export function fillEnclosedRegionsCanvas(canvas: OffscreenCanvas): void {
 
 /**
  * Erode (shrink) an opaque shape inward by `radius` pixels.
- * Uses BFS from boundary pixels (transparent → opaque transition).
- * Only pixels within `radius` distance from the boundary are cleared.
- * Complexity: O(W×H) — no EDT needed.
+ * Two raster passes compute the same four-connected (Manhattan) distance
+ * as the original BFS, without a full-canvas queue or visiting background
+ * neighbors. Canvas edges are not treated as transparent pixels.
  */
 export function erodeCanvasInward(canvas: OffscreenCanvas, radius: number): void {
   if (radius <= 0) return
@@ -206,31 +206,28 @@ export function erodeCanvasInward(canvas: OffscreenCanvas, radius: number): void
   const { data } = imageData
   const total = width * height
 
-  // BFS from all transparent pixels, expand layer by layer up to radius depth.
   const dist = new Uint16Array(total)
-  dist.fill(65535)
-  const queue = new Int32Array(total)
-  let qHead = 0
-  let qTail = 0
-
-  for (let i = 0; i < total; i++) {
-    if (data[i * 4 + 3] <= 16) {
-      dist[i] = 0
-      queue[qTail++] = i
+  const intRadius = Math.ceil(radius)
+  // Saturate at the original sentinel to preserve behavior for empty/full masks.
+  for (let y = 0; y < height; y++) {
+    const row = y * width
+    for (let x = 0; x < width; x++) {
+      const i = row + x
+      if (data[i * 4 + 3] <= 16) continue
+      const left = x > 0 ? dist[i - 1] : 65535
+      const top = y > 0 ? dist[i - width] : 65535
+      dist[i] = Math.min(65535, Math.min(left, top) + 1)
     }
   }
-
-  const intRadius = Math.ceil(radius)
-  while (qHead < qTail) {
-    const i = queue[qHead++]
-    const d = dist[i] + 1
-    if (d > intRadius) continue
-    const x = i % width
-    const y = (i - x) / width
-    if (x > 0 && dist[i - 1] > d) { dist[i - 1] = d; queue[qTail++] = i - 1 }
-    if (x < width - 1 && dist[i + 1] > d) { dist[i + 1] = d; queue[qTail++] = i + 1 }
-    if (y > 0 && dist[i - width] > d) { dist[i - width] = d; queue[qTail++] = i - width }
-    if (y < height - 1 && dist[i + width] > d) { dist[i + width] = d; queue[qTail++] = i + width }
+  for (let y = height - 1; y >= 0; y--) {
+    const row = y * width
+    for (let x = width - 1; x >= 0; x--) {
+      const i = row + x
+      if (dist[i] === 0) continue
+      const right = x + 1 < width ? dist[i + 1] : 65535
+      const bottom = y + 1 < height ? dist[i + width] : 65535
+      dist[i] = Math.min(dist[i], Math.min(right, bottom) + 1)
+    }
   }
 
   let modified = false

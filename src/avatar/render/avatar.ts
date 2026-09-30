@@ -150,6 +150,8 @@ function fitTextLayout(
   lineHeightRatio: number,
   minFontSize: number,
 ): AvatarTextLayout | null {
+  const manualLines = manualLineTexts(text)
+  const graphemes = manualLines ? [] : splitGraphemes(normalizeLineBreaks(text))
   let best: AvatarTextLayout | null = null
   let low = minFontSize
   let high = radius
@@ -158,7 +160,8 @@ function fitTextLayout(
     const fontSize = (low + high) / 2
     const layout = layoutText(
       context,
-      text,
+      manualLines,
+      graphemes,
       fontSize,
       fontWeight,
       radius,
@@ -176,7 +179,8 @@ function fitTextLayout(
 
 function layoutText(
   context: OffscreenCanvasRenderingContext2D,
-  text: string,
+  manualLines: string[] | null,
+  graphemes: string[],
   fontSize: number,
   fontWeight: number,
   radius: number,
@@ -184,19 +188,30 @@ function layoutText(
 ): AvatarTextLayout | null {
   context.font = fontSpec(fontSize, fontWeight)
   const lineHeight = fontSize * lineHeightRatio
-  const manualLines = manualLineTexts(text)
   if (manualLines) {
     const lines = layoutManualLines(context, manualLines, lineHeight, radius)
     return lines ? { fontSize, lineHeight, lines } : null
   }
 
-  const graphemes = splitGraphemes(normalizeLineBreaks(text))
+  // Share exact substring measurements across all candidate line counts.
+  // Keep this cache local to the current font size and render/runtime.
+  const measured = new Map<number, { text: string; width: number }>()
+  const measureRange = (start: number, end: number) => {
+    const key = start * (graphemes.length + 1) + end
+    let value = measured.get(key)
+    if (!value) {
+      const text = graphemes.slice(start, end).join('')
+      value = { text, width: context.measureText(text).width }
+      measured.set(key, value)
+    }
+    return value
+  }
   const maxLines = Math.min(MAX_AUTO_LINES, graphemes.length)
   let best: AvatarLine[] | null = null
   let bestScore = Number.POSITIVE_INFINITY
 
   for (let lineCount = 2; lineCount <= maxLines; lineCount += 1) {
-    const lines = chooseAutoLines(context, graphemes, lineHeight, lineCount, radius)
+    const lines = chooseAutoLines(measureRange, graphemes.length, lineHeight, lineCount, radius)
     if (!lines) continue
 
     const score = layoutScore(lines, radius, lineHeight)
@@ -236,8 +251,8 @@ function layoutManualLines(
 }
 
 function chooseAutoLines(
-  context: OffscreenCanvasRenderingContext2D,
-  graphemes: string[],
+  measureRange: (start: number, end: number) => { text: string; width: number },
+  graphemeCount: number,
   lineHeight: number,
   lineCount: number,
   radius: number,
@@ -247,11 +262,11 @@ function chooseAutoLines(
 
   function visit(start: number, lineIndex: number, lines: AvatarLine[]): void {
     const remainingLines = lineCount - lineIndex
-    const remainingChars = graphemes.length - start
+    const remainingChars = graphemeCount - start
     if (remainingChars < remainingLines) return
 
     if (remainingLines === 1) {
-      const line = createLine(context, graphemes, start, graphemes.length, lineIndex, lineCount, lineHeight)
+      const line = createLine(measureRange, start, graphemeCount, lineIndex, lineCount, lineHeight)
       if (line.width > lineLimit(radius, line.y, lineHeight)) return
 
       const candidate = [...lines, line]
@@ -265,9 +280,9 @@ function chooseAutoLines(
 
     const y = lineY(lineIndex, lineCount, lineHeight)
     const maxWidth = lineLimit(radius, y, lineHeight)
-    const maxEnd = graphemes.length - remainingLines + 1
+    const maxEnd = graphemeCount - remainingLines + 1
     for (let end = start + 1; end <= maxEnd; end += 1) {
-      const line = createLine(context, graphemes, start, end, lineIndex, lineCount, lineHeight)
+      const line = createLine(measureRange, start, end, lineIndex, lineCount, lineHeight)
       if (line.width > maxWidth) break
       visit(end, lineIndex + 1, [...lines, line])
     }
@@ -278,19 +293,16 @@ function chooseAutoLines(
 }
 
 function createLine(
-  context: OffscreenCanvasRenderingContext2D,
-  graphemes: string[],
+  measureRange: (start: number, end: number) => { text: string; width: number },
   start: number,
   end: number,
   lineIndex: number,
   lineCount: number,
   lineHeight: number,
 ): AvatarLine {
-  const text = graphemes.slice(start, end).join('')
   return {
-    text,
+    ...measureRange(start, end),
     y: lineY(lineIndex, lineCount, lineHeight),
-    width: context.measureText(text).width,
   }
 }
 

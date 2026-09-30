@@ -21,6 +21,7 @@ export {
 export {
   darken,
   deriveDepthColor,
+  deriveByteStyleColors,
   randomVividColors,
   resolveGradientStops,
 } from './utils/color'

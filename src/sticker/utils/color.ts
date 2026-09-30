@@ -1,4 +1,5 @@
 import { colord } from 'colord'
+import { colorToOklab, oklabToColor, type Oklab } from './oklab'
 
 // 单色渐变的另一端：同色相、深一点的配套色。轻微降饱和，避免高饱和浅色变深后刺眼。
 export function deriveDepthColor(base: string): string {
@@ -41,6 +42,41 @@ export function lighten(color: string, amount: number): string {
   const scale = (channel: number) =>
     Math.max(0, Math.min(255, Math.round(channel + (255 - channel) * amount)))
   return `rgb(${scale(r)}, ${scale(g)}, ${scale(b)})`
+}
+
+// All byte-style presets use the same calibrated split around a midpoint color.
+// Features: [1, L, a, b, neighbor.L-L, neighbor.a-a, neighbor.b-b].
+// The neighbor term lets a peach-to-pink foreground acquire a purple-to-red
+// outline without storing four independent colors or per-preset shading rules.
+const BYTE_STYLE_SPLIT = [
+  [0.257432, -0.154123, -0.171574, -0.040156, 0.048742, -0.030464, -0.054308],
+  [0.005749, -0.033239, -0.164178, -0.034416, 0.157135, -0.039628, -0.035442],
+  [0.042756, -0.058246, 0.055164, -0.085112, -0.129385, 0.062993, 0.051851],
+] as const
+
+/** Input stops represent the perceptual midpoint between text and outline.
+ * Split lightness and chroma in Oklab rather than scaling RGB toward black/white. */
+export function deriveByteStyleColors(colors: string[]): {
+  foreground: string[]
+  outline: string[]
+} {
+  const stops = colors.map(colorToOklab)
+  const foreground: string[] = [], outline: string[] = []
+  for (const [index, color] of stops.entries()) {
+    const previous = stops[index - 1], next = stops[index + 1]
+    const neighbor: Oklab = previous && next
+      ? [(previous[0] + next[0]) / 2, (previous[1] + next[1]) / 2, (previous[2] + next[2]) / 2]
+      : previous ?? next ?? color
+    const features = [1, ...color, ...neighbor.map((value, channel) => value - color[channel])]
+    const split = BYTE_STYLE_SPLIT.map((row) => row.reduce((sum, value, channel) => sum + value * features[channel], 0))
+    // Preserve a visible lightness gap while keeping gray inputs achromatic.
+    const lightness = Math.max(0.10, Math.min(0.24, split[0]))
+    const chromaWeight = Math.min(1, Math.hypot(color[1], color[2]) / 0.03)
+    const a = split[1] * chromaWeight, b = split[2] * chromaWeight
+    foreground.push(oklabToColor([color[0] + lightness, color[1] + a, color[2] + b]))
+    outline.push(oklabToColor([color[0] - lightness, color[1] - a, color[2] - b]))
+  }
+  return { foreground, outline }
 }
 
 function hueDistance(a: number, b: number): number {

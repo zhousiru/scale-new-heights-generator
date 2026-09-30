@@ -123,8 +123,8 @@ export const DEFAULT_STICKER_CONTROLS: StickerControls = {
     edgeOpacity: 0.2,
   },
   padding: {
-    x: 8,
-    y: 24,
+    x: 4,
+    y: 8,
   },
 }
 

@@ -185,12 +185,15 @@ export function useStickerEditor() {
       flavor: preset.flavor ?? DEFAULT_STICKER_CONTROLS.flavor,
       icon: preset.icon ?? DEFAULT_STICKER_CONTROLS.icon,
       iconTilt: preset.iconTilt ?? DEFAULT_STICKER_CONTROLS.iconTilt,
+      shadow: { ...c.shadow, opacity: preset.shadowOpacity },
       envelope: {
         ...c.envelope,
         colors: preset.colors,
         gradientAngle:
           preset.gradientAngle ?? DEFAULT_STICKER_CONTROLS.envelope.gradientAngle,
         outlineStrokeWidth: preset.outlineStrokeWidth,
+        edgeWidth: preset.edgeWidth,
+        edgeOpacity: preset.edgeOpacity,
       },
     }))
   }
