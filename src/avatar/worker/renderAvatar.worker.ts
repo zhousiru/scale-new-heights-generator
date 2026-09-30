@@ -3,7 +3,8 @@ import type {
   AvatarWorkerRequest,
   AvatarWorkerResponse,
 } from '../config/workerProtocol'
-import { createLatestRenderCache, postImageWorkerResult } from '../../shared/worker/imageWorker'
+import { createLatestRenderCache } from '../../shared/worker/imageWorker'
+import { postImageWorkerResult } from '../../shared/worker/imageWorkerResult'
 
 const cachedRender = createLatestRenderCache<Awaited<ReturnType<typeof renderAvatar>>>()
 

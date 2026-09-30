@@ -5,7 +5,7 @@ import {
   isCommonHanGrapheme,
   isWesternWordGrapheme,
 } from './characters'
-import { loadFontFace } from './fontFace'
+import { getFontFaceSet, loadFontFace, withFontLoadTimeout, type FontFaceSource } from './fontFace'
 import { createRuntimeCanvas } from './runtime'
 import {
   type GlyphMeasurement,
@@ -117,7 +117,35 @@ export function fontSpec(
 }
 
 const fontLoadPromises = new Map<StickerFlavor, Promise<void>>()
+interface FontSubset {
+  face: FontFace
+  ranges: [number, number][]
+}
+const remoteFontFaces = new Map<StickerFlavor, FontSubset[]>()
+const remoteFontDisabled = new Set<StickerFlavor>()
 let measurementCanvas: OffscreenCanvas | null = null
+
+/** Used by the browser canvas and preset menu. Node registers local fonts. */
+export function installStickerFontSources(flavor: StickerFlavor, sources?: FontFaceSource[]): void {
+  const fonts = getFontFaceSet()
+  if (!fonts || !sources?.length || remoteFontFaces.has(flavor) || remoteFontDisabled.has(flavor)) return
+  const { family, weight } = FONT_REGISTRY[flavor]
+  const faces: FontSubset[] = []
+  try {
+    for (const { source, unicodeRange } of sources) {
+      const face = new FontFace(family, source, { weight, style: 'normal', unicodeRange })
+      const ranges: [number, number][] = face.unicodeRange.split(',').map(range => {
+        const [start, end = start] = range.trim().replace(/^U\+/i, '').split('-')
+        return [parseInt(start.replaceAll('?', '0'), 16), parseInt(end.replaceAll('?', 'f'), 16)]
+      })
+      faces.push({ face, ranges })
+    }
+    remoteFontFaces.set(flavor, faces)
+  } catch {
+    for (const { face } of faces) fonts.delete(face)
+    remoteFontDisabled.add(flavor)
+  }
+}
 
 export function iconGlyphTransformFrom(baseTransform: GlyphTransform): GlyphTransform {
   return {
@@ -129,7 +157,34 @@ export function iconGlyphTransformFrom(baseTransform: GlyphTransform): GlyphTran
 
 export async function ensureStickerFontLoaded(
   flavor: StickerFlavor = 'snh',
+  text = FONT_SAMPLE_TEXT,
 ): Promise<void> {
+  const fonts = getFontFaceSet()
+  const remote = remoteFontFaces.get(flavor)
+  if (fonts && remote) {
+    try {
+      const selected = new Set<FontFace>()
+      for (const char of new Set(text)) {
+        const code = char.codePointAt(0)!
+        // CSS gives later declarations priority. FontFaceSet.load() loads
+        // every overlapping range, including large rare-character subsets;
+        // select the winning range before downloading to avoid that overhead.
+        const subset = remote.findLast(({ ranges }) => ranges.some(([start, end]) => code >= start && code <= end))
+        if (subset) selected.add(subset.face)
+        else if (usesFeatureFont(flavor, char, true)) throw new Error('Character missing from CDN ranges')
+      }
+      await withFontLoadTimeout(Promise.all([...selected].map(face => face.load())))
+      // Keep stylesheet declaration order regardless of download completion.
+      for (const { face } of remote) if (selected.has(face)) fonts.add(face)
+      return
+    } catch {
+      // Remove all CDN faces before using the full local font, avoiding mixed
+      // sources after a partial remote download.
+      for (const { face } of remote) fonts.delete(face)
+      remoteFontFaces.delete(flavor)
+      remoteFontDisabled.add(flavor)
+    }
+  }
   let promise = fontLoadPromises.get(flavor)
   if (!promise) {
     const descriptor = FONT_REGISTRY[flavor]

@@ -258,13 +258,22 @@
 
 .preset-option-text {
   overflow: hidden;
+  inline-size: fit-content;
+  max-inline-size: 100%;
   background: var(--preset-gradient);
+  background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   font-weight: 500;
+  line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.preset-option-text-bs {
+  transform: scale(1.25);
+  transform-origin: left center;
 }
 
 .preset-option-gradient {

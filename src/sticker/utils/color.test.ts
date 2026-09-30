@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { colord } from 'colord'
+import { colorToHsl } from './colorSpace'
 import {
   colorInputValue,
   darken,
@@ -15,23 +15,23 @@ describe('deriveDepthColor', () => {
   it('keeps hue while producing a darker companion', () => {
     const base = '#4c9acc'
     const depth = deriveDepthColor(base)
-    const a = colord(base).toHsl()
-    const b = colord(depth).toHsl()
+    const a = colorToHsl(base)
+    const b = colorToHsl(depth)
 
-    expect(Math.abs(a.h - b.h)).toBeLessThan(2)
+    expect(Math.abs((a.h ?? 0) - (b.h ?? 0))).toBeLessThan(2)
     expect(b.l).toBeLessThan(a.l)
   })
 
   it('keeps light colors from becoming too deep or gray', () => {
     const base = '#66ffcc'
     const depth = deriveDepthColor(base)
-    const a = colord(base).toHsl()
-    const b = colord(depth).toHsl()
+    const a = colorToHsl(base)
+    const b = colorToHsl(depth)
 
     expect(b.l).toBeLessThan(a.l)
-    expect(a.l - b.l).toBeLessThan(18)
-    expect(b.l).toBeGreaterThan(55)
-    expect(b.s).toBeGreaterThanOrEqual(60)
+    expect(a.l - b.l).toBeLessThan(0.18)
+    expect(b.l).toBeGreaterThan(0.55)
+    expect(b.s).toBeGreaterThanOrEqual(0.60)
     expect(b.s).toBeLessThan(a.s)
   })
 })
@@ -40,10 +40,10 @@ describe('deriveHighlightColor', () => {
   it('keeps hue while producing a lighter companion', () => {
     const base = '#4c9acc'
     const highlight = deriveHighlightColor(base)
-    const a = colord(base).toHsl()
-    const b = colord(highlight).toHsl()
+    const a = colorToHsl(base)
+    const b = colorToHsl(highlight)
 
-    expect(Math.abs(a.h - b.h)).toBeLessThan(2)
+    expect(Math.abs((a.h ?? 0) - (b.h ?? 0))).toBeLessThan(2)
     expect(b.l).toBeGreaterThan(a.l)
   })
 })
@@ -52,9 +52,9 @@ describe('resolveGradientStops', () => {
   it('expands a single color into a [dark, light] pair', () => {
     const base = '#4c9acc'
     const [dark, light] = resolveGradientStops([base])
-    expect(colord(dark).toHsl().l).toBeLessThan(colord(base).toHsl().l)
-    expect(colord(light).toHsl().l).toBeGreaterThan(colord(base).toHsl().l)
-    expect(colord(dark).toHsl().l).toBeLessThan(colord(light).toHsl().l)
+    expect(colorToHsl(dark).l).toBeLessThan(colorToHsl(base).l)
+    expect(colorToHsl(light).l).toBeGreaterThan(colorToHsl(base).l)
+    expect(colorToHsl(dark).l).toBeLessThan(colorToHsl(light).l)
   })
 
   it('passes two/three colors through unchanged', () => {
@@ -132,13 +132,13 @@ describe('randomGradientPair', () => {
     }
     // 字节范渲染时从基准色派生深轮廓，文字只轻微提亮。
     for (const color of colors) {
-      const base = colord(color).toHsl().l
-      const outline = colord(darken(color, 0.24)).toHsl().l
-      const foreground = colord(lighten(color, 0.12)).toHsl().l
+      const base = colorToHsl(color).l
+      const outline = colorToHsl(darken(color, 0.24)).l
+      const foreground = colorToHsl(lighten(color, 0.12)).l
       expect(outline).toBeLessThan(base)
-      expect(base - outline).toBeGreaterThan(12)
+      expect(base - outline).toBeGreaterThan(0.12)
       expect(foreground).toBeGreaterThan(base)
-      expect(foreground - base).toBeLessThan(8)
+      expect(foreground - base).toBeLessThan(0.08)
     }
   })
 })

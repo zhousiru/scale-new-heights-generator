@@ -2,24 +2,11 @@ import type {
   ImageFileResult,
   PreviewResult,
 } from '../components/ImagePreview'
-import {
-  encodeUltraHdrJpegFromCanvas,
-  ULTRA_HDR_JPEG_EXTENSION,
-  ULTRA_HDR_JPEG_MIME,
-} from '../hdr/ultraHdrJpeg'
 
 export type ImageWorkerResponse =
   | ({ type: 'render-result'; id: number } & PreviewResult)
   | ({ type: 'export-result'; id: number } & ImageFileResult)
   | { type: 'error'; id: number; message: string }
-
-interface WorkerRenderResult {
-  canvas: OffscreenCanvas
-  width: number
-  height: number
-  toBlob: () => Promise<Blob>
-  toBitmap: () => ImageBitmap
-}
 
 interface PendingRequest {
   id: number
@@ -144,46 +131,6 @@ export function createLatestRenderCache<T>() {
     })
     return entry.value
   }
-}
-
-const encodedResults = new WeakMap<WorkerRenderResult, Map<string, Promise<ImageFileResult>>>()
-
-export async function postImageWorkerResult(
-  id: number,
-  type: 'render' | 'export',
-  result: WorkerRenderResult,
-  flash: boolean,
-  flashStops: number,
-): Promise<void> {
-  if (type === 'render' && !flash) {
-    // transferToImageBitmap clears the backing canvas, which would invalidate
-    // the cached result. Snapshot it instead and retain the export source.
-    const bitmap = await createImageBitmap(result.canvas)
-    postMessage({
-      type: 'render-result', id, kind: 'bitmap', bitmap,
-      width: result.width, height: result.height, mime: 'image/png', extension: 'png',
-    } satisfies ImageWorkerResponse, { transfer: [bitmap] })
-    return
-  }
-
-  let encodings = encodedResults.get(result)
-  if (!encodings) {
-    encodings = new Map()
-    encodedResults.set(result, encodings)
-  }
-  const key = flash ? `hdr:${flashStops}` : 'png'
-  let encoding = encodings.get(key)
-  if (!encoding) {
-    encoding = Promise.resolve().then(async () => flash
-      ? { blob: encodeUltraHdrJpegFromCanvas(result.canvas, { flashStops }), mime: ULTRA_HDR_JPEG_MIME, extension: ULTRA_HDR_JPEG_EXTENSION }
-      : { blob: await result.toBlob(), mime: 'image/png', extension: 'png' })
-    encodings.set(key, encoding)
-    void encoding.catch(() => encodings!.delete(key))
-  }
-  const file = await encoding
-  postMessage(type === 'render'
-    ? { type: 'render-result', id, kind: 'blob', ...file, width: result.width, height: result.height } satisfies ImageWorkerResponse
-    : { type: 'export-result', id, ...file } satisfies ImageWorkerResponse)
 }
 
 function responsePayload(

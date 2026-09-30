@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createImageWorkerClient, createLatestRenderCache, postImageWorkerResult, type ImageWorkerResponse } from './imageWorker'
+import { createImageWorkerClient, createLatestRenderCache, type ImageWorkerResponse } from './imageWorker'
+import { postImageWorkerResult } from './imageWorkerResult'
 import type { ImageFileResult } from '../components/ImagePreview'
 
 function fixture() {
