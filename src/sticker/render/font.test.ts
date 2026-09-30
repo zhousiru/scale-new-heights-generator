@@ -8,14 +8,17 @@ afterEach(() => {
 
 async function fixture(remoteWait?: Promise<void>) {
   vi.resetModules()
-  const { ensureStickerFontLoaded, installStickerFontSources } = await import('./font')
+  const { ensureStickerFontLoaded, installStickerFontSources, stickerFontDescriptor, fontSpec } = await import('./font')
   const instances: FakeFontFace[] = []
   class FakeFontFace {
     load = vi.fn<() => Promise<FakeFontFace>>(async () => {
+      this.status = 'loading'
       if (remoteWait && this.source.includes('font.example')) await remoteWait
+      this.status = 'loaded'
       return this
     })
-    readonly family: string
+    family: string
+    status: FontFaceLoadStatus = 'unloaded'
     readonly source: string
     readonly unicodeRange: string
     constructor(family: string, source: string, descriptors: FontFaceDescriptors) {
@@ -29,7 +32,7 @@ async function fixture(remoteWait?: Promise<void>) {
   vi.stubGlobal('FontFace', FakeFontFace)
   vi.stubGlobal('fonts', fonts)
   const sources = [{ source: 'url("https://font.example/subset.woff2")', unicodeRange: 'U+4E00-9FFF' }]
-  return { ensureStickerFontLoaded, installStickerFontSources, fonts, instances, sources }
+  return { ensureStickerFontLoaded, installStickerFontSources, stickerFontDescriptor, fontSpec, fonts, instances, sources }
 }
 
 describe('browser font sources', () => {
@@ -47,6 +50,26 @@ describe('browser font sources', () => {
     expect(fonts.load).not.toHaveBeenCalled()
   })
 
+  it('refreshes the canvas font family only when additional subsets become available', async () => {
+    const { ensureStickerFontLoaded, installStickerFontSources, stickerFontDescriptor, fontSpec, fonts, instances, sources } = await fixture()
+    installStickerFontSources('bs', [...sources, { source: 'url("common.woff2")', unicodeRange: 'U+59CB' }])
+    await ensureStickerFontLoaded('bs', '始')
+    const initialFamily = stickerFontDescriptor('bs').family
+    expect(fontSpec('bs', 128, '始')).toContain(`"${initialFamily}"`)
+
+    await ensureStickerFontLoaded('bs', '新增')
+    const expandedFamily = stickerFontDescriptor('bs').family
+    expect(expandedFamily).not.toBe(initialFamily)
+    expect(instances.map(face => face.family)).toEqual([expandedFamily, expandedFamily])
+    expect(fontSpec('bs', 128, '新')).toContain(`"${expandedFamily}"`)
+    expect(fonts.add.mock.calls.slice(-2).map(([face]) => face)).toEqual(instances)
+
+    const registrations = fonts.add.mock.calls.length
+    await ensureStickerFontLoaded('bs', '始新')
+    expect(stickerFontDescriptor('bs').family).toBe(expandedFamily)
+    expect(fonts.add).toHaveBeenCalledTimes(registrations)
+  })
+
   it('removes partial CDN faces and keeps the local fallback after a subset fails', async () => {
     const { ensureStickerFontLoaded, installStickerFontSources, fonts, instances, sources } = await fixture()
     installStickerFontSources('snh', sources)
@@ -58,6 +81,20 @@ describe('browser font sources', () => {
     await ensureStickerFontLoaded('snh', '新文字')
     expect(instances).toHaveLength(2)
     expect(instances[1].load).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not register a late subset after another request has switched to the local font', async () => {
+    let finishRemote!: () => void
+    const remoteWait = new Promise<void>((resolve) => { finishRemote = resolve })
+    const { ensureStickerFontLoaded, installStickerFontSources, stickerFontDescriptor, fonts, instances, sources } = await fixture(remoteWait)
+    installStickerFontSources('snh', sources)
+    const pending = ensureStickerFontLoaded('snh', '勇')
+    await ensureStickerFontLoaded('snh', 'A')
+    finishRemote()
+    await pending
+    expect(fonts.add).toHaveBeenCalledTimes(1)
+    expect(fonts.add).toHaveBeenCalledWith(instances[1])
+    expect(stickerFontDescriptor('snh').family).toBe('DouyinSansBold')
   })
 
   it('falls back locally if a CDN subset never finishes loading', async () => {

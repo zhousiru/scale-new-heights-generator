@@ -61,7 +61,9 @@ const FONT_REGISTRY: Record<StickerFlavor, StickerFontDescriptor> = {
 export function stickerFontDescriptor(
   flavor: StickerFlavor,
 ): StickerFontDescriptor {
-  return FONT_REGISTRY[flavor]
+  const descriptor = FONT_REGISTRY[flavor]
+  const family = remoteFontFaces.get(flavor)?.family ?? descriptor.family
+  return family === descriptor.family ? descriptor : { ...descriptor, family }
 }
 
 // 每种字体的字形整形参数（缩放 + 旋转 + 斜切）。返回 FONT_REGISTRY 中手动精调
@@ -121,11 +123,15 @@ interface FontSubset {
   face: FontFace
   ranges: [number, number][]
 }
-const remoteFontFaces = new Map<StickerFlavor, FontSubset[]>()
+interface RemoteStickerFont {
+  subsets: FontSubset[]
+  family: string
+}
+const remoteFontFaces = new Map<StickerFlavor, RemoteStickerFont>()
 const remoteFontDisabled = new Set<StickerFlavor>()
 let measurementCanvas: OffscreenCanvas | null = null
 
-/** Used by the browser canvas and preset menu. Node registers local fonts. */
+/** 浏览器画布与预设菜单共用字体分片；Node 由 runtime 注册本地字体。 */
 export function installStickerFontSources(flavor: StickerFlavor, sources?: FontFaceSource[]): void {
   const fonts = getFontFaceSet()
   if (!fonts || !sources?.length || remoteFontFaces.has(flavor) || remoteFontDisabled.has(flavor)) return
@@ -140,7 +146,7 @@ export function installStickerFontSources(flavor: StickerFlavor, sources?: FontF
       })
       faces.push({ face, ranges })
     }
-    remoteFontFaces.set(flavor, faces)
+    remoteFontFaces.set(flavor, { subsets: faces, family })
   } catch {
     for (const { face } of faces) fonts.delete(face)
     remoteFontDisabled.add(flavor)
@@ -166,21 +172,31 @@ export async function ensureStickerFontLoaded(
       const selected = new Set<FontFace>()
       for (const char of new Set(text)) {
         const code = char.codePointAt(0)!
-        // CSS gives later declarations priority. FontFaceSet.load() loads
-        // every overlapping range, including large rare-character subsets;
-        // select the winning range before downloading to avoid that overhead.
-        const subset = remote.findLast(({ ranges }) => ranges.some(([start, end]) => code >= start && code <= end))
+        // 后声明的分片优先；直接加载命中的分片，避免 fonts.load() 连同
+        // 重叠的大型生僻字分片一起下载。
+        const subset = remote.subsets.findLast(({ ranges }) => ranges.some(([start, end]) => code >= start && code <= end))
         if (subset) selected.add(subset.face)
         else if (usesFeatureFont(flavor, char, true)) throw new Error('Character missing from CDN ranges')
       }
       await withFontLoadTimeout(Promise.all([...selected].map(face => face.load())))
-      // Keep stylesheet declaration order regardless of download completion.
-      for (const { face } of remote) if (selected.has(face)) fonts.add(face)
-      return
+      if (remoteFontFaces.get(flavor) === remote) {
+        const loaded = remote.subsets.filter(({ face }) => face.status === 'loaded')
+        // OffscreenCanvas 会缓存同名字体的分片匹配结果。新增分片后更新族名，
+        // 让测量和绘制都重新匹配；族名数量最多等于分片数量，不随渲染次数增长。
+        const family = `${FONT_REGISTRY[flavor].family} Subsets ${loaded.length}`
+        if (loaded.length > 0 && family !== remote.family) {
+          for (const { face } of loaded) fonts.delete(face)
+          for (const { face } of loaded) {
+            face.family = family
+            fonts.add(face)
+          }
+          remote.family = family
+        }
+        return
+      }
     } catch {
-      // Remove all CDN faces before using the full local font, avoiding mixed
-      // sources after a partial remote download.
-      for (const { face } of remote) fonts.delete(face)
+      // 本地整库启用前移除所有远程分片，避免部分下载造成字体混用。
+      for (const { face } of remote.subsets) fonts.delete(face)
       remoteFontFaces.delete(flavor)
       remoteFontDisabled.add(flavor)
     }
