@@ -58,20 +58,38 @@ describe('node sticker renderer', () => {
 
   it('supports an explicit StickerGenerator runtime', async () => {
     const generator = new StickerGenerator(await createNapiCanvasRuntime())
-    const buffer = await generator.renderBuffer({
+    const input = {
       text: '高峰不常有',
       icon: '',
-      envelope: {
-        colors: ['#1688ff', '#44b305'],
-        gradientAngle: 45,
-      },
-    }, {
-      outputScale: 2,
-      antialiasScale: 1,
+      padding: { x: 0, y: 0 },
+      envelope: { colors: ['#1688ff', '#44b305'], gradientAngle: 45 },
+    }
+    const buffer = await generator.renderBuffer(input, {
+      outputScale: 2, antialiasScale: 1,
     })
-
+    const base = await generator.renderBuffer(input, {
+      outputScale: 1, antialiasScale: 1,
+    })
     expect(Buffer.isBuffer(buffer)).toBe(true)
     expect(buffer.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
-    expect(pngSize(buffer).width).toBeGreaterThan(800)
+    expect(Math.abs(pngSize(buffer).width - 2 * pngSize(base).width)).toBeLessThanOrEqual(2)
   })
+})
+
+it('renders 300 characters on multiple lines without allocating giant canvases', async () => {
+  const runtime = await createNapiCanvasRuntime()
+  const sizes: number[][] = []
+  const generator = new StickerGenerator({
+    ...runtime,
+    createCanvas: (width, height) => {
+      sizes.push([width, height])
+      return runtime.createCanvas(width, height)
+    },
+  })
+  const line = '勇攀高峰一起创造更多可能持续学习保持热爱'
+  const output = await generator.renderBuffer(Array(15).fill(line).join('\n'), { loadIcon: false })
+  expect(pngSize(output).height).toBeGreaterThan(300)
+  expect(pngSize(output).height).toBeLessThan(600)
+  expect(output.byteLength).toBeGreaterThan(1024)
+  expect(Math.max(...sizes.map(([width, height]) => width * height))).toBeLessThan(12_000_000)
 })

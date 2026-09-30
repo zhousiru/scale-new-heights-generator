@@ -425,13 +425,12 @@ function drawSingleEmojiGlyph(
   resetAndPrepareTextContext(emojiContext, fontSize, flavor)
   drawPlacedGlyphs(
     emojiContext,
-    layout,
+    { ...layout, placements: [placement] },
     originX - left,
     originY - top,
     (current, grapheme) => {
       current.fillText(grapheme, 0, 0)
     },
-    (currentPlacement) => currentPlacement === placement,
   )
   clearEmojiCornerArtifacts(emojiContext, placement, originX - left, originY - top)
   context.drawImage(emojiCanvas, left, top)

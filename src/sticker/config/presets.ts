@@ -1,5 +1,6 @@
 import {
   defaultGradientAngle,
+  DEFAULT_STICKER_CONTROLS,
   STICKER_DEFAULT_OUTLINE_WIDTH,
   type StickerFlavor,
 } from './defaults'
@@ -13,8 +14,11 @@ interface StickerPresetSeed {
   gradientAngle?: number
   outlineStrokeWidth?: number
   icon?: string
-  /** 圆形/徽章类图标不适合随文字斜切 */
+  /** 按图标轮廓与参考图的接近程度决定是否随文字斜切 */
   iconTilt?: boolean
+  edgeWidth?: number
+  edgeOpacity?: number
+  shadowOpacity?: number
 }
 
 export interface StickerPreset extends StickerPresetSeed {
@@ -23,11 +27,14 @@ export interface StickerPreset extends StickerPresetSeed {
   outlineStrokeWidth: number
   icon: string
   iconTilt: boolean
+  edgeWidth: number
+  edgeOpacity: number
+  shadowOpacity: number
 }
 
 type PresetDefaults = Pick<
   StickerPreset,
-  'flavor' | 'gradientAngle' | 'outlineStrokeWidth' | 'icon' | 'iconTilt'
+  'flavor' | 'gradientAngle' | 'outlineStrokeWidth' | 'icon' | 'iconTilt' | 'edgeWidth' | 'edgeOpacity' | 'shadowOpacity'
 >
 
 /** 贴纸预设的全局默认参数 */
@@ -37,38 +44,41 @@ const PRESET_DEFAULTS: PresetDefaults = {
   outlineStrokeWidth: STICKER_DEFAULT_OUTLINE_WIDTH.snh,
   icon: '',
   iconTilt: true,
+  edgeWidth: DEFAULT_STICKER_CONTROLS.envelope.edgeWidth,
+  edgeOpacity: DEFAULT_STICKER_CONTROLS.envelope.edgeOpacity,
+  shadowOpacity: DEFAULT_STICKER_CONTROLS.shadow.opacity,
 }
 
 /** 贴纸预设种子表 */
 export const STICKER_PRESETS: Record<string, StickerPresetSeed[]> = {
   字节范: [
-    { text: '始终创业', colors: ['#8d0', '#6da'], icon: 'mdi:numeric-1-box' },
-    { text: '多元兼容', colors: ['#fae', '#d6d'], icon: 'tabler:planet', iconTilt: false },
-    { text: '坦诚清晰', colors: ['#ff975c'], icon: 'mdi:message-text' },
-    { text: '求真务实', colors: ['#69d1f2', '#c55be7'], icon: 'mdi:magnify', iconTilt: false },
-    { text: '敢为极致', colors: ['#fb609e'], icon: 'mdi:star-four-points', iconTilt: false },
-    { text: '共同成长', colors: ['#73e8d7', '#14a38e'], icon: 'mdi:sprout' },
-    { text: '领导力', colors: ['#ffb65c'], icon: 'mdi:torch' },
-    { text: '激发创造', colors: ['#65baf6'], icon: 'mdi:lightbulb-on' },
-    { text: '丰富生活', colors: ['#68d9f2'], icon: 'mdi:music' },
+    { text: '始终创业', colors: ['#aec71c', '#53ad77'], icon: 'mdi:numeric-1-box', iconTilt: true },
+    { text: '多元兼容', colors: ['#ffa8c2', '#bf5cdb'], icon: 'tabler:planet', iconTilt: true },
+    { text: '坦诚清晰', colors: ['#ff9e3d', '#cd6b4c'], icon: 'mdi:message-text', iconTilt: true },
+    { text: '求真务实', colors: ['#14d0b9', '#d338bf'], icon: 'mdi:magnify', iconTilt: true },
+    { text: '敢为极致', colors: ['#ed8fc0', '#c55077'], icon: 'mdi:star-four-points', iconTilt: false },
+    { text: '共同成长', colors: ['#63ab77', '#1595b0'], icon: 'mdi:sprout', iconTilt: true },
+    { text: '领导力', colors: ['#fbb85c', '#c27208'], icon: 'mdi:torch', iconTilt: true },
+    { text: '激发创造', colors: ['#2ea6e3', '#4c76af'], icon: 'mdi:lightbulb-on', iconTilt: true },
+    { text: '丰富生活', colors: ['#38bbcd', '#3f89a3'], icon: 'mdi:music', iconTilt: false },
   ],
   勇攀高峰: [
-    { text: '勇攀高峰', colors: ['#5c95e5'] },
-    { text: '高峰不常有', colors: ['#08e', '#9cf'] },
-    { text: '高度优先', colors: ['#e69a35'] },
-    { text: '重点突破', colors: ['#eb5328'] },
-    { text: '聚焦', colors: ['#3179e2'] },
-    { text: '创新推动', colors: ['#ccaa44', '#3388dd'] },
+    { text: '勇攀高峰', colors: ['#e85621', '#19396f', '#adcfed'] },
+    { text: '高峰不常有', colors: ['#148ded', '#afdaff'] },
+    { text: '高度优先', colors: ['#e68f1b', '#8bbfff'] },
+    { text: '重点突破', colors: ['#d63404', '#8bbfff'] },
+    { text: '聚焦', colors: ['#123268', '#3587ee'] },
+    { text: '创新推动', colors: ['#2c97e8', '#d5b52d'] },
   ],
   务实浪漫系列: [
-    { text: '做了≠做好了', colors: ['#42e34d'], icon: 'mdi:check-bold' },
-    { text: '不断创新', colors: ['#02b0f1', '#02d294'], icon: 'mdi:head-lightbulb' },
-    { text: '敢想敢干', colors: ['#0fbfe3'], icon: 'mdi:hand-back-right' },
-    { text: '务实浪漫', colors: ['#7e40e3', '#2f62f1'], icon: 'mdi:star-shooting' },
-    { text: '梦想实现中', colors: ['#3a85f0'], icon: 'mdi:bird' },
-    { text: '快速行动', colors: ['#fe2191'] },
-    { text: '一起改变', colors: ['#fcaf03', '#f38121', '#f35e3b'], icon: 'mdi:account-multiple' },
-    { text: 'We Are ByteDancers', colors: ['#0080f1'], icon: 'mdi:alpha-b-circle', iconTilt: false },
+    { text: '做了≠做好了', colors: ['#97d52b', '#36e450'], icon: 'mdi:check-bold', iconTilt: false },
+    { text: '不断创新', colors: ['#00acf0', '#00d588'], icon: 'mdi:head-lightbulb', iconTilt: true },
+    { text: '敢想敢干', colors: ['#0acbd5', '#197fe0'], icon: 'mdi:hand-back-right', iconTilt: true },
+    { text: '务实浪漫', colors: ['#8d36e7', '#5b7ff1'], icon: 'mdi:star-shooting', iconTilt: true },
+    { text: '梦想实现中', colors: ['#3f8bf4', '#0056bd'], icon: 'mdi:bird', iconTilt: true },
+    { text: '快速行动', colors: ['#fb24bb', '#fa173e'], icon: 'mdi:run-fast', iconTilt: true },
+    { text: '一起改变', colors: ['#ffae00', '#ea3151'], icon: 'mdi:account-multiple', iconTilt: false },
+    { text: 'We Are ByteDancers', colors: ['#00bfcc', '#007afb'], icon: 'uil:13-plus', iconTilt: true },
   ],
   地震级创意: [
     { text: '快速对对', colors: ['#4d52e9', '#9539f9'] },
@@ -82,9 +92,20 @@ export type StickerPresetGroup = keyof typeof STICKER_PRESETS
 
 /** 贴纸预设分组级默认参数 */
 const PRESET_GROUP_DEFAULTS: Record<string, Partial<PresetDefaults>> = {
+  务实浪漫系列: {
+    gradientAngle: 90,
+    outlineStrokeWidth: STICKER_DEFAULT_OUTLINE_WIDTH.snh,
+    edgeWidth: 0,
+    edgeOpacity: 0,
+  },
+  勇攀高峰: {
+    gradientAngle: 180,
+    outlineStrokeWidth: STICKER_DEFAULT_OUTLINE_WIDTH.snh,
+  },
   字节范: {
     flavor: 'bs',
     outlineStrokeWidth: STICKER_DEFAULT_OUTLINE_WIDTH.bs,
+    gradientAngle: 90,
   },
 }
 

@@ -22,7 +22,7 @@ export function renderAvatarPreview(controls: AvatarControls): Promise<PreviewRe
 export function exportAvatarBlob(controls: AvatarControls): Promise<ImageFileResult> {
   return client.request<ImageFileResult>((worker, id) => {
     worker.postMessage({ type: 'export', id, controls })
-  })
+  }, 'export')
 }
 
 export function cancelPendingAvatarPreviews(): void {

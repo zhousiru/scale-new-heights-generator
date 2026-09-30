@@ -1,8 +1,11 @@
+import { stickerOutputSize } from './outputSize'
+import { renderResultFromCanvas } from '../../shared/render/canvas'
+import { outputAwareRasterScale, scaleBounds, scaleLayout } from './rasterScale'
 import {
   normalizeRenderScale,
   type StickerControls,
 } from '../config/defaults'
-import { darken, lighten, resolveGradientStops } from '../utils/color'
+import { darken, deriveByteStyleColors, resolveGradientStops } from '../utils/color'
 import {
   ensureStickerFontLoaded,
   fontGlyphTransform,
@@ -43,20 +46,12 @@ import {
 import {
   IDENTITY_GLYPH_TRANSFORM,
   type GradientExtent,
+  type GlyphMeasurement,
   type GlyphTransform,
   type OpaqueBounds,
   type RenderIcon,
   type RenderResult,
 } from './types'
-
-/** 导出时文字内容归一化到的目标高度，不含描边外扩 */
-const EXPORT_TEXT_HEIGHT = 150
-/** 默认导出图片最长边限制 */
-const MAX_EXPORT_EDGE = 2048
-/** 字节范描边颜色加深比例 */
-const BYTE_OUTLINE_DARKEN = 0.4
-/** 字节范前景颜色提亮比例 */
-const BYTE_FOREGROUND_LIGHTEN = 0.4
 
 export interface RenderStickerOptions {
   /** 导出像素倍率，浏览器 UI 默认 1；Node/机器人可用 2~3 生成更高清图片 */
@@ -84,7 +79,7 @@ export async function renderSticker(
   await ensureStickerFontLoaded(controls.flavor)
 
   const antialiasScale = options.antialiasScale ?? controls.antialiasScale
-  const renderControls = scaleControlsForRasterization(controls, antialiasScale)
+  let renderControls = scaleControlsForRasterization(controls, antialiasScale)
 
   // 字符倾斜关闭时，剥离字面固有的旋转与斜切、只保留缩放，让字形直立。
   const baseTransform = fontGlyphTransform(renderControls.flavor)
@@ -96,18 +91,25 @@ export async function renderSticker(
     : IDENTITY_GLYPH_TRANSFORM
 
   const chineseDominant = isChineseDominant(text)
-  const layout = createStickerLayout(text, {
+  const measurements = new Map<string, GlyphMeasurement>()
+  let layout = createStickerLayout(text, {
     fontSize: renderControls.fontSize,
     letterSpacing: renderControls.letterSpacing,
     lineHeight: renderControls.lineHeight,
     flavor: renderControls.flavor,
     glyphTransform,
     alternatingOffset: renderControls.peak ? renderControls.alternatingOffset : 0,
-    measureGlyph: (grapheme, fontSize) =>
-      measureGlyphWithCanvas(grapheme, fontSize, renderControls.flavor, chineseDominant),
+    measureGlyph: (grapheme, fontSize) => {
+      let measurement = measurements.get(grapheme)
+      if (!measurement) {
+        measurement = measureGlyphWithCanvas(grapheme, fontSize, renderControls.flavor, chineseDominant)
+        measurements.set(grapheme, measurement)
+      }
+      return measurement
+    },
   })
 
-  const iconBox = iconBitmap
+  let iconBox = iconBitmap
     ? computeIconBox(
       iconBitmap,
       layout,
@@ -115,9 +117,39 @@ export async function renderSticker(
       iconGlyphTransform,
     )
     : null
-  const contentBounds = iconBox
+  let contentBounds = iconBox
     ? mergeBounds(layout.bounds, iconBox)
     : layout.bounds
+
+  const outputScale = normalizeRenderScale(options.outputScale)
+  const outputSize = stickerOutputSize(
+    contentBounds,
+    renderControls.fontSize,
+    renderControls.envelope.outlineStrokeWidth,
+    outputScale,
+    options.maxOutputEdge,
+  )
+  const maxOutputEdge = outputSize.maxEdge
+  const rasterScale = outputAwareRasterScale(
+    contentBounds,
+    renderControls.envelope.outlineStrokeWidth,
+    outputSize.textHeight,
+    maxOutputEdge,
+    antialiasScale,
+    calculateWorkingPadding(renderControls),
+  )
+  if (rasterScale < 1) {
+    renderControls = scaleControlsForRasterization(renderControls, rasterScale)
+    layout = scaleLayout(layout, rasterScale)
+    contentBounds = scaleBounds(contentBounds, rasterScale)
+    if (iconBox) {
+      iconBox = {
+        ...scaleBounds(iconBox, rasterScale),
+        drawWidth: iconBox.drawWidth * rasterScale,
+        drawHeight: iconBox.drawHeight * rasterScale,
+      }
+    }
+  }
 
   const padding = calculateWorkingPadding(renderControls)
   const workingWidth = Math.max(
@@ -305,12 +337,8 @@ export async function renderSticker(
     // 彩色字形直接由加深的同色系外层带包裹——没有白色描边。外扩部分就是加深后的颜色本身。
     const rimWidth = renderControls.envelope.outlineStrokeWidth
 
-    const byteOutlineStops = gradientStops.map((color) =>
-      darken(color, BYTE_OUTLINE_DARKEN),
-    )
-    const byteForegroundStops = gradientStops.map((color) =>
-      lighten(color, BYTE_FOREGROUND_LIGHTEN),
-    )
+    const { outline: byteOutlineStops, foreground: byteForegroundStops } =
+      deriveByteStyleColors(gradientStops)
 
     // Layer 1: Deep outline — darkened gradient fill
     const deepCanvas = createSolidShapeCanvas(rimWidth * 2)
@@ -363,26 +391,20 @@ export async function renderSticker(
     )
   }
 
-  // 以「文字内容高度」（不含描边）为稳定参照来缩放
+  // 固定成品字号优先；outputSize 只在尺寸预算不足时缩小整段文字。
   const contentHeight = Math.max(1, contentBounds.maxY - contentBounds.minY)
-  const outputScale = normalizeRenderScale(options.outputScale)
-  const exportScale = (EXPORT_TEXT_HEIGHT * outputScale) / contentHeight
+  const exportScale = outputSize.textHeight / contentHeight
   const exportCanvas = cropResizePadCanvas(
     outputCanvas,
     exportScale,
-    options.maxOutputEdge ?? Math.round(MAX_EXPORT_EDGE * outputScale),
+    maxOutputEdge,
     controls.padding.x,
     controls.padding.y,
     boundsToCropBounds(contentBounds, originX, originY),
   )
 
-  return {
-    canvas: exportCanvas,
-    width: exportCanvas.width,
-    height: exportCanvas.height,
-    toBlob: () => exportCanvas.convertToBlob({ type: 'image/png' }),
-    toBitmap: () => exportCanvas.transferToImageBitmap(),
-  }
+  // Keep cached results independent of this render's temporary layer closures.
+  return renderResultFromCanvas(exportCanvas)
 }
 
 function boundsToCropBounds(
