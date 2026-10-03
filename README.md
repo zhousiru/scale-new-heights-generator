@@ -23,7 +23,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm build` 构建网页和 npm 包；`pnpm test`、`pnpm lint` 检查代码。`pnpm format` 修复基础格式，保留手工换行；`pnpm format:check` 与 `pnpm lint` 使用同一套规则。
+`pnpm build` 构建网页和 npm 包；`pnpm test`、`pnpm lint` 检查代码。`pnpm format` 修复基础格式，保留手工换行。
 
 ## 在 Node 中使用
 

@@ -111,11 +111,6 @@
   gap: 0.5rem;
 }
 
-.field-label-wrapper {
-  display: inline-flex;
-  user-select: none;
-}
-
 .field-label {
   display: inline-flex;
   align-items: center;
@@ -717,13 +712,6 @@
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-}
-
-.knob-label {
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-  line-height: 1;
-  white-space: nowrap;
 }
 
 @media (max-width: 20rem) {

@@ -23,6 +23,5 @@ export function renderResultFromCanvas(canvas: OffscreenCanvas) {
     width: canvas.width,
     height: canvas.height,
     toBlob: () => canvas.convertToBlob({ type: 'image/png' }),
-    toBitmap: () => canvas.transferToImageBitmap(),
   }
 }

@@ -9,7 +9,6 @@ const buttonVariants = cva('ui-button', {
       default: 'ui-button-default',
       secondary: 'ui-button-secondary',
       ghost: 'ui-button-ghost',
-      link: 'ui-button-link',
     },
     size: {
       default: 'ui-button-md',

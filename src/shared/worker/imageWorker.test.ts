@@ -173,13 +173,11 @@ describe('latest render cache', () => {
       width: 100,
       height: 50,
       toBlob: vi.fn<() => Promise<Blob>>(async () => new Blob(['png'])),
-      toBitmap: vi.fn<() => ImageBitmap>(),
     }
     await postImageWorkerResult(0, 'render', result, false, 1)
     await postImageWorkerResult(1, 'export', result, false, 1)
     await postImageWorkerResult(2, 'export', result, false, 1)
     expect(snapshot).toHaveBeenCalledWith(result.canvas)
-    expect(result.toBitmap).not.toHaveBeenCalled()
     expect(result.toBlob).toHaveBeenCalledTimes(1)
     expect(post).toHaveBeenCalledTimes(3)
   })

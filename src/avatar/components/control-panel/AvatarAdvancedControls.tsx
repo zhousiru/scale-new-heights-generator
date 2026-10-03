@@ -31,7 +31,7 @@ export function AvatarAdvancedControls({ controls, updateControl }: AvatarAdvanc
     <AdvancedSection defaultOpen={hasAdvancedParams}>
       <HdrControls
         flashStops={controls.flash ? controls.flashStops : 0}
-        fieldClassName="field avatar-field field-slider"
+        className="avatar-field field-slider"
         onFlashStopsChange={(value) => {
           updateControl('flashStops', value)
           updateControl('flash', value > 0)

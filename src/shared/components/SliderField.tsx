@@ -7,7 +7,7 @@ interface SliderFieldProps
   extends Pick<ComponentProps<typeof Slider>, 'className' | 'step' | 'value' | 'onValueChange'>,
   Required<Pick<ComponentProps<typeof Slider>, 'min' | 'max'>> {
   label: ReactNode
-  defaultValue?: number
+  defaultValue: number
   valueLabel?: ReactNode
 }
 
@@ -22,11 +22,9 @@ export function SliderField({
   valueLabel = value,
   onValueChange,
 }: SliderFieldProps) {
-  const isDirty = defaultValue !== undefined && value !== defaultValue
+  const isDirty = value !== defaultValue
   const handleReset = () => {
-    if (defaultValue !== undefined) {
-      onValueChange(defaultValue)
-    }
+    onValueChange(defaultValue)
   }
 
   return (

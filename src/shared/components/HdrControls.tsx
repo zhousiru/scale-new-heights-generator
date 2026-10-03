@@ -1,4 +1,3 @@
-import { Slider } from '../ui/slider'
 import { Button } from '../ui/button'
 import {
   Dialog,
@@ -9,7 +8,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import { cn } from '../utils/cn'
 import { FieldLabel } from './FieldLabel'
+import { SliderField } from './SliderField'
 import {
   DEFAULT_FLASH_STOPS,
   ENABLED_FLASH_STOPS,
@@ -21,19 +22,19 @@ import {
 interface HdrControlsProps {
   flashStops: number
   label?: string
-  fieldClassName?: string
+  className?: string
   onFlashStopsChange: (value: number) => void
 }
 
 export function HdrControls({
   flashStops,
   label = '色彩增益',
-  fieldClassName = 'field',
+  className,
   onFlashStopsChange,
 }: HdrControlsProps) {
   if (flashStops === 0) {
     return (
-      <div className={fieldClassName}>
+      <div className={cn('field', className)}>
         <FieldLabel>{label}</FieldLabel>
         <Dialog>
           <DialogTrigger asChild>
@@ -74,24 +75,17 @@ export function HdrControls({
   }
 
   return (
-    <div className={fieldClassName}>
-      <FieldLabel
-        isDirty={flashStops !== DEFAULT_FLASH_STOPS}
-        onReset={() => onFlashStopsChange(DEFAULT_FLASH_STOPS)}
-      >
-        {label}
-      </FieldLabel>
-      <Slider
-        min={FLASH_STOPS_MIN}
-        max={FLASH_STOPS_MAX}
-        step={FLASH_STOPS_STEP}
-        value={flashStops}
-        onValueChange={onFlashStopsChange}
-      />
-      <span className="field-value">
-        {formatEv(flashStops)}
-      </span>
-    </div>
+    <SliderField
+      className={className}
+      label={label}
+      min={FLASH_STOPS_MIN}
+      max={FLASH_STOPS_MAX}
+      step={FLASH_STOPS_STEP}
+      value={flashStops}
+      defaultValue={DEFAULT_FLASH_STOPS}
+      valueLabel={formatEv(flashStops)}
+      onValueChange={onFlashStopsChange}
+    />
   )
 }
 

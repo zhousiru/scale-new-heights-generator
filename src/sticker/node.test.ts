@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   StickerGenerator,
   createNapiCanvasRuntime,
@@ -43,6 +43,21 @@ describe('node sticker renderer', () => {
     expect(buffer.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
   })
 
+  it('图标下载失败时仍生成与关闭图标一致的 PNG', async () => {
+    const generator = new StickerGenerator(await createNapiCanvasRuntime())
+    const input = { text: '高峰不常有', icon: 'ph:lightbulb' }
+    const withoutIcon = await generator.renderBuffer(input, { loadIcon: false })
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('网络不可用'))
+    try {
+      const buffer = await generator.renderBuffer(input)
+      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(buffer.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+      expect(buffer).toEqual(withoutIcon)
+    } finally {
+      fetch.mockRestore()
+    }
+  })
+
   it('keeps output dimensions close when 3x antialiasing is enabled', async () => {
     const base = await renderStickerToBuffer('高峰不常有', {
       loadIcon: false,
@@ -58,6 +73,21 @@ describe('node sticker renderer', () => {
     expect(Math.abs(antialiasedSize.width - baseSize.width)).toBeLessThan(12)
     expect(Math.abs(antialiasedSize.height - baseSize.height)).toBeLessThan(6)
     expect(antialiased.byteLength).toBeGreaterThan(1024)
+  })
+
+  it('clamps antialiasScale to the documented 1-5x range', async () => {
+    const at = (antialiasScale: number) => renderStickerToBuffer(
+      { text: '高', fontSize: 32, icon: '' },
+      { loadIcon: false, antialiasScale },
+    )
+    const minimum = await at(1)
+    const maximum = await at(5)
+
+    // 越界值必须收敛到边界，而不是直接进入渲染管线。
+    expect(maximum).not.toEqual(minimum)
+    expect(await at(100)).toEqual(maximum)
+    expect(await at(-5)).toEqual(minimum)
+    expect(await at(0)).toEqual(minimum)
   })
 
   it('supports an explicit StickerGenerator runtime', async () => {

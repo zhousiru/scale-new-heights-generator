@@ -195,6 +195,8 @@ import {
 } from "@syru/byted-sticker-generator/core";
 ```
 
+渲染结果的 `canvas` 可直接用于后续处理，浏览器也可通过 `toBlob()` 导出 PNG，或用 `createImageBitmap(result.canvas)` 获取不清空画布的快照。Node 使用 `renderStickerToImage()` 等字节流接口。
+
 飞书头像使用独立入口，不依赖 sticker 的字形/描边管线：
 
 ```ts
@@ -214,7 +216,6 @@ const png = await renderAvatarToBuffer({
 ## 验证与体积审计
 
 ```bash
-pnpm format:check
 pnpm lint
 pnpm exec tsc -b
 pnpm test
@@ -223,7 +224,7 @@ pnpm audit:size
 pnpm benchmark
 ```
 
-`pnpm format` 由 Oxlint 执行 Stylistic 基础规则，只统一缩进、引号和空格等格式，保留手工换行，不强制展开对象、数组或调用链。80–120 列作为阅读参考，不作为 CI 门槛；`pnpm format:check` 与 `pnpm lint` 使用同一套规则，CI 只运行一次 lint。Stylistic 仅作为开发依赖，由 Oxlint 加载，无需安装独立的 ESLint 引擎。生成的校准配置仍由校准脚本验证。
+`pnpm format` 由 Oxlint 执行 Stylistic 基础规则，只统一缩进、引号和空格等格式，保留手工换行，不强制展开对象、数组或调用链。80–120 列作为阅读参考，不作为 CI 门槛。`oxlint --fix` 会应用全部可修复规则，不限于 Stylistic。Stylistic 仅作为开发依赖，由 Oxlint 加载，无需安装独立的 ESLint 引擎。生成的校准配置仍由校准脚本验证。
 
 `audit:size` 在内存中构建，列出实际产物原始 / gzip 体积、公共资源和依赖贡献。依赖贡献采用最终压缩前的模块长度，只用于定位大头，不能直接相加当作下载体积。两个 Worker 分别构建 HDR 延迟模块，只有使用相应工具的 HDR 功能时才请求对应文件。
 

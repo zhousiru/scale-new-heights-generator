@@ -1,10 +1,10 @@
-import { parseNumber } from '../shared/config/normalize'
 import { Buffer } from 'node:buffer'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import {
   STICKER_FLAVORS,
+  normalizeAntialiasScale,
   normalizeRenderScale,
   normalizeStickerControls,
   type StickerControls,
@@ -32,6 +32,7 @@ import {
 } from '../shared/hdr/ultraHdrJpeg'
 import type { RenderIcon } from './render/types'
 import { iconIdToUrl } from './utils/iconLoader'
+import { isDuotoneIcon, svgHasHardcodedColor, svgIsRenderable } from './utils/iconSource'
 
 export type StickerRenderInput = TextRenderInput<StickerControls>
 export type { StickerFlavor }
@@ -182,7 +183,7 @@ async function loadNodeIconImage(
   runtime: StickerGeneratorRuntime,
   primaryColor: string,
 ): Promise<RenderIcon | null> {
-  const duotone = /duotone/i.test(iconId)
+  const duotone = isDuotoneIcon(iconId)
   const url = iconIdToUrl(iconId, duotone ? primaryColor : undefined)
   if (!url) return null
   if (!runtime.loadImage) {
@@ -191,12 +192,18 @@ async function loadNodeIconImage(
     )
   }
 
-  const response = await fetch(url)
-  if (!response.ok) return null
-  const svg = await response.text()
-  if (!svg.includes('<svg')) return null
+  // 与浏览器 iconLoader 一致：出网失败降级为「无图标」，不让整次渲染抛错。
+  let svg: string
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return null
+    svg = await response.text()
+  } catch {
+    return null
+  }
+  if (!svgIsRenderable(svg)) return null
 
-  const colored = duotone || /(?:fill|stop-color)\s*=\s*["']\s*(?:#|rgb\(|hsl\()/i.test(svg)
+  const colored = duotone || svgHasHardcodedColor(svg)
   const bitmap = await runtime.loadImage(Buffer.from(svg))
   return { bitmap, colored }
 }
@@ -256,7 +263,9 @@ export class StickerGenerator {
     const result = await renderSticker(controls, icon, {
       outputScale: normalizeRenderScale(options.outputScale),
       antialiasScale:
-        options.antialiasScale === undefined ? undefined : parseNumber(options.antialiasScale),
+        options.antialiasScale === undefined
+          ? undefined
+          : normalizeAntialiasScale(options.antialiasScale),
       maxOutputEdge: options.maxOutputEdge,
     })
     return { canvas: result.canvas, controls }

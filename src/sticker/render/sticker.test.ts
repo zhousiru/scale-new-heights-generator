@@ -206,6 +206,7 @@ describe('createStickerLayout', () => {
       measureGlyph,
     })
 
+    expect(layout.placements).toHaveLength(15)
     expect(layout.placements.every((p) => p.baselineY === 0)).toBe(true)
   })
 

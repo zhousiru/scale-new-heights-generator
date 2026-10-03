@@ -39,7 +39,6 @@
     "build:package": "tsdown",
     "lint": "oxlint .",
     "format": "oxlint --fix .",
-    "format:check": "oxlint .",
     "preview": "vite preview",
     "test": "vitest run",
     "benchmark": "pnpm run build:package && node scripts/benchmark-generation.mjs",

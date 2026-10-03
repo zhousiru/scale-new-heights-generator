@@ -1,4 +1,5 @@
 import type { RenderIcon } from '../render/types'
+import { isDuotoneIcon, svgHasHardcodedColor, svgIsRenderable } from './iconSource'
 
 // Iconify 图标是 SVG。`createImageBitmap` 无法在 Web Worker 内解码 SVG blob。
 /** 图标 SVG 在主线程栅格化后的目标边长 */
@@ -16,16 +17,6 @@ interface IconResource {
 }
 
 const iconResourceCache = new Map<string, Promise<IconResource | null>>()
-
-// Phosphor 等库以 `-duotone` 后缀提供双色调图标（靠 currentColor + 两档透明度）。
-function isDuotoneIcon(iconId: string): boolean {
-  return /duotone/i.test(iconId)
-}
-
-// SVG 是否内嵌硬编码颜色（多色图标），而非仅用 currentColor。
-function svgHasHardcodedColor(svg: string): boolean {
-  return /(?:fill|stop-color)\s*=\s*["']\s*(?:#|rgb\(|hsl\()/i.test(svg)
-}
 
 // 把形如 `mdi:rocket` 或 `mdi-rocket` 的 Iconify id 解析成拉取 URL。
 // 传入 color 时以该色请求（用于 duotone：让 currentColor 采用贴纸主色）；
@@ -67,7 +58,7 @@ function loadIconResource(
       if (!response.ok) return null
       const svg = await response.text()
       // Iconify 对未知图标会返回 "404" 文本。
-      if (!svg.includes('<svg')) return null
+      if (!svgIsRenderable(svg)) return null
       const colored = duotone || svgHasHardcodedColor(svg)
       return { blob: new Blob([svg], { type: 'image/svg+xml' }), colored }
     } catch {

@@ -19,11 +19,6 @@ export function deriveDepthColor(base: string): string {
   return adjustHsl(base, { lightness: -0.12, saturation: -0.05 })
 }
 
-// 同色相的浅端：略增饱和度，避免提亮后发灰。
-export function deriveHighlightColor(base: string): string {
-  return adjustHsl(base, { lightness: 0.06, saturation: 0.03 })
-}
-
 // 深端保留输入色；浅端向亮的中性色靠近，字节范需给字面提亮留出空间。
 const SINGLE_COLOR_TONES = {
   snh: { maxLightness: 0.92, highlightMix: 0.70 },

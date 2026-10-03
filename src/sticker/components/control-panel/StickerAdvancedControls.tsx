@@ -109,7 +109,7 @@ export function StickerAdvancedControls({
 
       <HdrControls
         flashStops={controls.flash ? controls.flashStops : 0}
-        fieldClassName="field field-slider"
+        className="field-slider"
         onFlashStopsChange={(value) => {
           updateControl('flashStops', value)
           updateControl('flash', value > 0)

@@ -6,9 +6,8 @@ import {
 
 interface AngleKnobProps {
   value: number
-  defaultValue?: number
+  defaultValue: number
   label?: string
-  inlineLabel?: string
   signed?: boolean
   onChange: (angle: number) => void
 }
@@ -32,7 +31,6 @@ export function AngleKnob({
   value,
   defaultValue,
   label = '渐变角度',
-  inlineLabel,
   signed = false,
   onChange,
 }: AngleKnobProps) {
@@ -97,11 +95,9 @@ export function AngleKnob({
   const lineX = CENTER + (TRACK_R - 7) * Math.cos(rad)
   const lineY = CENTER + (TRACK_R - 7) * Math.sin(rad)
 
-  const isDirty = defaultValue !== undefined && value !== defaultValue
+  const isDirty = value !== defaultValue
   const handleReset = () => {
-    if (defaultValue !== undefined) {
-      onChange(defaultValue)
-    }
+    onChange(defaultValue)
   }
 
   return (
@@ -115,7 +111,6 @@ export function AngleKnob({
       onKeyDown={handleKeyDown}
       onDoubleClick={handleReset}
     >
-      {inlineLabel && <span className="knob-label">{inlineLabel}</span>}
       <svg
         ref={knobRef}
         className="knob"

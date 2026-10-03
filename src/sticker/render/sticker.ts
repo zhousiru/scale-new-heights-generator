@@ -10,20 +10,17 @@ import {
   isChineseDominant,
   measureGlyphWithCanvas,
 } from './font'
-import { createStickerLayout, isEmojiGrapheme, mergeBounds } from './layout'
+import { createStickerLayout, mergeBounds } from './layout'
 import { cropResizePadCanvas } from './canvas'
 import { createGradient, gradientExtentFromCanvas } from './gradient'
 import { dilateCanvasOutwardRound, erodeCanvasInward, fillEnclosedRegionsCanvas } from './paint'
 import { createRuntimeCanvas } from '../../shared/render/runtime'
 import {
-  configureTextContext,
   computeIconBox,
   buildGlyphTileCache,
   drawEmojiGlyphs,
   drawGlyphsFromTiles,
   drawIcon,
-  drawPlacedGlyphs,
-  isTextPlacement,
 } from './glyphs'
 import {
   IDENTITY_GLYPH_TRANSFORM,
@@ -152,78 +149,42 @@ export async function renderSticker(
   const primaryStrokeWidth = renderControls.envelope.outlineStrokeWidth * 2
   const { strokeTiles, fillTiles } = buildGlyphTileCache(layout, primaryStrokeWidth)
 
-  // ---------- Helper: draw non-emoji glyphs + icon with stroke and fill ----------
-  const drawStrokeAndFill = (
-    context: OffscreenCanvasRenderingContext2D,
-    lineWidth: number,
-    ox = originX,
-    oy = originY,
-  ) => {
-    // Use tile cache for the primary stroke width; fall back to direct draw for others
-    if (lineWidth === primaryStrokeWidth) {
-      drawGlyphsFromTiles(context, layout, strokeTiles, ox, oy)
-    } else {
-      context.lineWidth = lineWidth
-      context.lineJoin = 'round'
-      context.lineCap = 'round'
-      context.miterLimit = 2
-      configureTextContext(context, renderControls.fontSize, renderControls.flavor)
-      drawPlacedGlyphs(
-        context,
-        layout,
-        ox,
-        oy,
-        (ctx, grapheme) => {
-          ctx.strokeText(grapheme, 0, 0)
-          ctx.fillText(grapheme, 0, 0)
-        },
-        isTextPlacement,
-      )
-      // emoji for non-cached lineWidths still needs shape contribution
-      if (layout.placements.some((p) => isEmojiGrapheme(p.grapheme))) {
-        drawEmojiGlyphs(context, layout, renderControls.fontSize, renderControls.flavor, ox, oy)
-      }
-    }
-  }
-
   // Helper: draw text glyphs fill-only (uses cached fill tiles)
-  const drawFillOnly = (context: OffscreenCanvasRenderingContext2D, ox = originX, oy = originY) => {
-    drawGlyphsFromTiles(context, layout, fillTiles, ox, oy)
+  const drawFillOnly = (context: OffscreenCanvasRenderingContext2D) => {
+    drawGlyphsFromTiles(context, layout, fillTiles, originX, originY)
     if (iconBitmap && iconBox) {
-      drawIcon(context, iconBitmap, iconBox, ox, oy, iconGlyphTransform)
+      drawIcon(context, iconBitmap, iconBox, originX, originY, iconGlyphTransform)
     }
   }
 
   // 文字描边蒙版；封闭区域在与图标合并后统一填充，保持原有轮廓。
-  const createTextOutlineCanvas = (lineWidth: number): OffscreenCanvas => {
+  const createTextOutlineCanvas = (): OffscreenCanvas => {
     const canvas = createRuntimeCanvas(workingWidth, workingHeight)
     const ctx = getContext(canvas)
     ctx.fillStyle = '#ffffff'
     ctx.strokeStyle = '#ffffff'
-    drawStrokeAndFill(ctx, lineWidth)
+    drawGlyphsFromTiles(ctx, layout, strokeTiles, originX, originY)
     return canvas
   }
 
   const drawIconShape = (
     context: OffscreenCanvasRenderingContext2D,
     lineWidth: number,
-    ox = originX,
-    oy = originY,
   ) => {
     if (!iconBitmap || !iconBox) return
     if (lineWidth <= 0) {
-      drawIcon(context, iconBitmap, iconBox, ox, oy, iconGlyphTransform)
+      drawIcon(context, iconBitmap, iconBox, originX, originY, iconGlyphTransform)
       return
     }
 
     const iconCanvas = createRuntimeCanvas(workingWidth, workingHeight)
-    drawIcon(getContext(iconCanvas), iconBitmap, iconBox, ox, oy, iconGlyphTransform)
+    drawIcon(getContext(iconCanvas), iconBitmap, iconBox, originX, originY, iconGlyphTransform)
     dilateCanvasOutwardRound(iconCanvas, lineWidth / 2)
     context.drawImage(iconCanvas, 0, 0)
   }
 
   // 文字始终共用一段渐变；图标按合并设置取色。描边和字面复用同一区域。
-  const textOutlineCanvas = createTextOutlineCanvas(primaryStrokeWidth)
+  const textOutlineCanvas = createTextOutlineCanvas()
   const iconOutlineCanvas = iconBitmap && iconBox && !controls.mergeGradient
     ? createRuntimeCanvas(workingWidth, workingHeight)
     : null
@@ -242,7 +203,7 @@ export async function renderSticker(
     controls.mergeGradient ? outlineCanvas : textOutlineCanvas,
     gradientAngle,
   )
-  const iconGradientExtent = iconOutlineCanvas && !controls.mergeGradient
+  const iconGradientExtent = iconOutlineCanvas
     ? gradientExtentFromCanvas(iconOutlineCanvas, gradientAngle)
     : null
   const fillGradient = (canvas: OffscreenCanvas, stops: string[]) => {

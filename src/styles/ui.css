@@ -90,15 +90,6 @@
   background: var(--accent);
 }
 
-.ui-button-link {
-  min-block-size: auto;
-  padding: 0;
-  color: var(--foreground);
-  background: transparent;
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
-}
-
 .ui-dialog-overlay {
   position: fixed;
   inset: 0;
