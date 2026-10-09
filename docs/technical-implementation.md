@@ -173,6 +173,8 @@ await renderStickerToBuffer("高峰不常有", {
 });
 ```
 
+随包字体的字重元数据已统一为 700，与浏览器 `FontFace` 的 bold 声明一致，避免 Node 根据原始 400 元数据合成加粗；字形轮廓不变，缺字仍沿用 bold 回退链。替换这两份字体资源后，维护者手动执行 `scripts/normalize-font-weight.py`（依赖及命令见脚本），将处理后的文件提交并随包发布即可。此步骤不接入安装、构建或发布钩子，使用者无需 Python。通过 `fontFiles` 提供的自定义字体应自行保证字重元数据与 bold 声明一致。
+
 Emoji / Symbol fallback 字体会按运行环境可用性注册：macOS 优先 Apple Color Emoji / Apple Symbols，Windows 走 Segoe UI Emoji / Segoe UI Symbol，Linux 或容器环境可使用系统安装或显式传入的 Noto 字体。
 
 根入口只导出配置、预设、URL 编解码和配色工具等纯逻辑：

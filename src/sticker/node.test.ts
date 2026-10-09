@@ -9,6 +9,7 @@ import {
 import { normalizeStickerControls, type StickerFlavor } from './config/defaults'
 import { renderSticker } from './render/sticker'
 import type { RenderIcon, RenderResult } from './render/types'
+import { stickerFontDescriptor } from './render/font'
 
 function pngSize(buffer: Buffer | Uint8Array) {
   const view = new DataView(
@@ -23,6 +24,26 @@ function pngSize(buffer: Buffer | Uint8Array) {
 }
 
 describe('node sticker renderer', () => {
+  it.each(['snh', 'bs'] as const)('%s 随包字体按 bold 注册且不会合成加粗', async (flavor) => {
+    const runtime = await createNapiCanvasRuntime()
+    await registerStickerFonts({}, runtime)
+    const { GlobalFonts } = await import('@napi-rs/canvas')
+    const { family } = stickerFontDescriptor(flavor)
+    expect(GlobalFonts.families.find(font => font.family === family)?.styles)
+      .toContainEqual({ weight: 700, width: 'normal', style: 'normal' })
+
+    const pixels = (weight: string) => {
+      const canvas = runtime.createCanvas(600, 150)
+      const context = canvas.getContext('2d')!
+      context.font = `${weight} 64px "${family}"`
+      context.fillText('勇攀高峰Aa0123', 10, 100)
+      return context.getImageData(0, 0, 600, 150).data
+    }
+    const native = pixels('normal')
+    expect(native.some(value => value !== 0)).toBe(true)
+    expect(pixels('bold')).toEqual(native)
+  })
+
   it('renders PNG bytes without browser APIs', async () => {
     const bytes = await renderStickerToPngBytes({
       text: '高峰不常有',
