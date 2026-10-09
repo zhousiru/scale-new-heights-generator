@@ -75,13 +75,14 @@ export function fontSpec(
   flavor: StickerFlavor,
   fontSize: number,
   grapheme?: string,
+  fontWeight?: string,
 ): string {
   const { family, weight } = stickerFontDescriptor(flavor)
   const families = [
     ...(usesFeatureFont(grapheme) ? [`"${family}"`] : []),
     ...CANVAS_FONT_FAMILIES.map((name) => `"${name}"`),
   ].join(', ')
-  return `normal ${weight} ${fontSize}px ${families}`
+  return `normal ${fontWeight ?? weight} ${fontSize}px ${families}`
 }
 
 const fontLoadPromises = new Map<StickerFlavor, Promise<void>>()
@@ -203,11 +204,12 @@ export function measureGlyphWithCanvas(
   grapheme: string,
   fontSize: number,
   flavor: StickerFlavor,
+  fontWeight?: string,
 ): GlyphMeasurement {
   const canvas = measurementCanvas ?? createRuntimeCanvas(1, 1)
   measurementCanvas = canvas
   const context = getContext(canvas)
-  context.font = fontSpec(flavor, fontSize, grapheme)
+  context.font = fontSpec(flavor, fontSize, grapheme, fontWeight)
   context.textBaseline = 'alphabetic'
 
   const metrics = context.measureText(grapheme)

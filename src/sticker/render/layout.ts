@@ -68,6 +68,7 @@ export function createStickerLayout(
     letterSpacing: number
     lineHeight?: number
     flavor?: StickerFlavor
+    fontWeight?: string
     glyphTransform?: GlyphTransform
     measureGlyph: (grapheme: string, fontSize: number) => GlyphMeasurement
   },
@@ -121,6 +122,7 @@ export function createStickerLayout(
     letterSpacing: options.letterSpacing,
     fontSize: options.fontSize,
     flavor: options.flavor ?? 'snh',
+    fontWeight: options.fontWeight ?? 'bold',
     glyphTransform,
   }
 }
