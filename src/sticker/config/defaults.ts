@@ -90,12 +90,6 @@ export interface StickerControls {
   mergeGradient: boolean
   /** 内部超采样倍率，用于平滑斜线和斜切边缘 */
   antialiasScale: number
-  /**
-   * CSS font-weight 值，用于 canvas fontSpec。默认 `'bold'`。
-   * 对于单 weight 字体（如 DouyinSansBold、YouSheBiaoTiHei），`'bold'` 会触发
-   * canvas 引擎的合成加粗；传 `'normal'` 可按字体原生粗细渲染。
-   */
-  fontWeight: string
   /** 开启后导出 Ultra HDR JPEG gain map；普通路径仍导出 PNG */
   flash: boolean
   /** HDR 增益，单位 EV stops；maxContentBoost = 2^flashStops */
@@ -120,7 +114,6 @@ export const DEFAULT_STICKER_CONTROLS: StickerControls = {
   iconTilt: true,
   mergeGradient: STICKER_DEFAULT_MERGE_GRADIENT.snh,
   antialiasScale: DEFAULT_ANTIALIAS_SCALE,
-  fontWeight: 'bold',
   flash: false,
   flashStops: DEFAULT_FLASH_STOPS,
   shadow: {
@@ -211,10 +204,6 @@ export function normalizeStickerControls(value: unknown): StickerControls {
       ANTIALIAS_SCALE_MAX,
       DEFAULT_ANTIALIAS_SCALE,
     ),
-    fontWeight:
-      typeof input.fontWeight === 'string' && input.fontWeight.trim().length > 0
-        ? input.fontWeight.trim()
-        : DEFAULT_STICKER_CONTROLS.fontWeight,
     flash:
       typeof input.flash === 'boolean'
         ? input.flash

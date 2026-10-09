@@ -29,12 +29,11 @@ function renderGlyphTile(
   flavor: StickerFlavor,
   glyphTransform: GlyphTransform,
   applySkew: boolean,
-  fontWeight?: string,
 ): GlyphTile {
   // Measure glyph bounding box (un-transformed)
   const tempCanvas = createRuntimeCanvas(1, 1)
   const tempCtx = getContext(tempCanvas)
-  tempCtx.font = fontSpec(flavor, fontSize, grapheme, fontWeight)
+  tempCtx.font = fontSpec(flavor, fontSize, grapheme)
   tempCtx.textBaseline = 'alphabetic'
   const metrics = tempCtx.measureText(grapheme)
   const left = metrics.actualBoundingBoxLeft || 0
@@ -79,7 +78,7 @@ function renderGlyphTile(
 
   if (applySkew) applyGlyphTransform(ctx, glyphTransform, horizontalSkew)
 
-  ctx.font = fontSpec(flavor, fontSize, grapheme, fontWeight)
+  ctx.font = fontSpec(flavor, fontSize, grapheme)
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
   ctx.fillStyle = '#ffffff'
@@ -113,12 +112,13 @@ export function buildGlyphTileCache(
 ): { strokeTiles: Map<string, GlyphTile>; fillTiles: Map<string, GlyphTile> } {
   const strokeTiles = new Map<string, GlyphTile>()
   const fillTiles = new Map<string, GlyphTile>()
-  const { fontSize, flavor, fontWeight, glyphTransform } = layout
+  const { fontSize, flavor, glyphTransform } = layout
 
   for (const placement of layout.placements) {
     const { grapheme, skew } = placement
 
     if (isEmojiGrapheme(grapheme)) {
+      // Emoji: stroke tile via fill + pixel dilation; fill tile via plain fill
       if (!strokeTiles.has(grapheme)) {
         strokeTiles.set(
           grapheme,
@@ -132,6 +132,7 @@ export function buildGlyphTileCache(
         )
       }
     } else {
+      // Text glyph: stroke tile via strokeText; fill tile via fillText
       if (!strokeTiles.has(grapheme)) {
         strokeTiles.set(
           grapheme,
@@ -142,14 +143,13 @@ export function buildGlyphTileCache(
             flavor,
             glyphTransform,
             skew,
-            fontWeight,
           ),
         )
       }
       if (!fillTiles.has(grapheme)) {
         fillTiles.set(
           grapheme,
-          renderGlyphTile(grapheme, fontSize, 0, flavor, glyphTransform, skew, fontWeight),
+          renderGlyphTile(grapheme, fontSize, 0, flavor, glyphTransform, skew),
         )
       }
     }
@@ -162,7 +162,7 @@ export function buildGlyphTileCache(
  * Render an emoji glyph as a white fill tile (no dilation).
  */
 function renderEmojiFillTile(grapheme: string, layout: StickerLayout): GlyphTile {
-  const { fontSize, flavor, fontWeight } = layout
+  const { fontSize, flavor } = layout
   const placement = layout.placements.find((p) => p.grapheme === grapheme)!
   const bounds = placement.bounds
   const padding = 4
@@ -171,7 +171,7 @@ function renderEmojiFillTile(grapheme: string, layout: StickerLayout): GlyphTile
 
   const canvas = createRuntimeCanvas(tileWidth, tileHeight)
   const ctx = getContext(canvas)
-  ctx.font = fontSpec(flavor, fontSize, grapheme, fontWeight)
+  ctx.font = fontSpec(flavor, fontSize, grapheme)
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
   ctx.fillStyle = '#ffffff'
@@ -204,7 +204,7 @@ function renderEmojiStrokeTile(
   strokeLineWidth: number,
   layout: StickerLayout,
 ): GlyphTile {
-  const { fontSize, flavor, fontWeight } = layout
+  const { fontSize, flavor } = layout
   const placement = layout.placements.find((p) => p.grapheme === grapheme)!
   const bounds = placement.bounds
   const dilateRadius = Math.ceil(strokeLineWidth / 2)
@@ -214,7 +214,7 @@ function renderEmojiStrokeTile(
 
   const canvas = createRuntimeCanvas(tileWidth, tileHeight)
   const ctx = getContext(canvas)
-  ctx.font = fontSpec(flavor, fontSize, grapheme, fontWeight)
+  ctx.font = fontSpec(flavor, fontSize, grapheme)
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
   ctx.fillStyle = '#ffffff'
@@ -361,7 +361,6 @@ export function drawPlacedGlyphs(
       layout.flavor,
       layout.fontSize,
       placement.grapheme,
-      layout.fontWeight,
     )
     // 锚定在字形的基线左端；下面每一步整形都以此为中心。
     context.translate(originX + placement.x, originY + placement.baselineY)
