@@ -74,7 +74,6 @@ export async function renderSticker(
     letterSpacing: renderControls.letterSpacing,
     lineHeight: renderControls.lineHeight,
     flavor: renderControls.flavor,
-    fontWeight: renderControls.fontWeight,
     glyphTransform,
     alternatingOffset: renderControls.peak ? renderControls.alternatingOffset : 0,
     measureGlyph: (grapheme, fontSize) => {
@@ -84,7 +83,6 @@ export async function renderSticker(
           grapheme,
           fontSize,
           renderControls.flavor,
-          renderControls.fontWeight,
         )
         measurements.set(grapheme, measurement)
       }

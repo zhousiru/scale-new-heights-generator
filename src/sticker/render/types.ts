@@ -53,8 +53,6 @@ export interface StickerLayout {
   letterSpacing: number
   fontSize: number
   flavor: StickerFlavor
-  /** CSS font-weight 值，传递到 fontSpec */
-  fontWeight: string
   /** 绘制时应用于文字字形的每字体整形参数 */
   glyphTransform: GlyphTransform
 }
