@@ -1,6 +1,6 @@
 {
   "name": "@syru/byted-sticker-generator",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"
